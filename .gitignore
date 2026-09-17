@@ -1,0 +1,14 @@
+# Dependencies
+node_modules/
+backend/**/__pycache__/
+backend/**/.pytest_cache/
+*.pyc
+
+# Build outputs
+frontend/dist/
+frontend/.vite/
+
+# Temporary / OS
+.DS_Store
+Thumbs.db
+*.log
