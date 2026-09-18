@@ -31,10 +31,8 @@ export const LoginPage = ({ onLoginSuccess }) => {
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState("phone"); // "phone" | "otp"
-  const [devOtp, setDevOtp] = useState(null);
   const [realSmsSent, setRealSmsSent] = useState(false);
   const [smsProvider, setSmsProvider] = useState(null);
-  const [showBackupOtp, setShowBackupOtp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   
@@ -71,7 +69,6 @@ export const LoginPage = ({ onLoginSuccess }) => {
     setPortal(newPortal);
     setStep("phone");
     setOtp("");
-    setDevOtp(null);
     setRealSmsSent(false);
     setErrorMsg("");
     setPhone("");
@@ -101,13 +98,11 @@ export const LoginPage = ({ onLoginSuccess }) => {
       if (res.success) {
         setRealSmsSent(Boolean(res.real_sms_sent));
         setSmsProvider(res.sms_provider || null);
-        setDevOtp(res.dev_otp || null);
         setStep("otp");
-        setShowBackupOtp(false);
         if (res.real_sms_sent) {
-          addToast(`📲 Real SMS dispatched to +91 ${cleanPhone} via ${res.sms_provider}!`, "success");
+          addToast(`📲 Verification code sent via SMS to +91 ${cleanPhone}!`, "success");
         } else {
-          addToast(res.message || "OTP generated successfully!", "info");
+          addToast("Verification code dispatched!", "info");
         }
       } else {
         setErrorMsg(res.message || "Failed to dispatch OTP.");
@@ -378,67 +373,39 @@ export const LoginPage = ({ onLoginSuccess }) => {
                 </button>
               </div>
 
-              {/* Real SMS Delivery Notification */}
+              {/* Verification Delivery Notification */}
               {realSmsSent ? (
                 <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs space-y-1.5 animate-fadeIn">
                   <div className="flex items-center gap-2 font-bold text-emerald-400">
                     <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>REAL SMS DELIVERED</span>
+                    <span>SMS OTP DISPATCHED</span>
                   </div>
                   <p className="text-[11px] leading-relaxed text-emerald-200/90">
-                    A 6-digit verification code has been dispatched to your mobile phone (+91 {phone}) via <strong>{smsProvider}</strong>. Please check your SMS messages.
+                    A 6-digit verification code has been sent via SMS to <strong>+91 {phone}</strong> ({smsProvider}). Please check your phone's SMS messages and enter the code below.
                   </p>
-                  {devOtp && (
-                    <div className="pt-1">
-                      {!showBackupOtp ? (
-                        <button
-                          type="button"
-                          onClick={() => setShowBackupOtp(true)}
-                          className="text-[10px] text-emerald-400/70 hover:text-emerald-300 underline"
-                        >
-                          Network delay? Show backup code
-                        </button>
-                      ) : (
-                        <div className="flex items-center justify-between text-[11px] bg-emerald-950/60 p-1.5 rounded-lg">
-                          <span>Backup OTP: <strong className="font-mono">{devOtp}</strong></span>
-                          <button
-                            type="button"
-                            onClick={() => setOtp(devOtp)}
-                            className="text-[10px] bg-emerald-700 px-2 py-0.5 rounded text-white font-bold"
-                          >
-                            Fill
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               ) : (
-                /* Fallback Banner when SMS Gateway is not active */
-                <div className="p-3 rounded-2xl bg-amber-950/30 border border-amber-500/30 text-amber-300 text-xs space-y-2">
+                <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="font-semibold text-amber-400">Demo / Simulation Mode</span>
+                    <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                      <Smartphone className="w-3.5 h-3.5 text-brand-400" />
+                      <span>Verification Code Sent</span>
+                    </span>
                     <button
                       type="button"
                       onClick={() => setIsSmsModalOpen(true)}
-                      className="text-[10px] text-amber-300 underline flex items-center gap-1"
+                      className="text-[11px] text-brand-400 hover:text-brand-300 underline flex items-center gap-1 font-medium"
                     >
-                      <Settings className="w-2.5 h-2.5" />
-                      Configure Real SMS
+                      <Settings className="w-3 h-3" />
+                      <span>Configure Real SMS</span>
                     </button>
                   </div>
-                  <div className="flex items-center justify-between bg-amber-950/60 p-2 rounded-xl border border-amber-500/20">
-                    <div className="flex items-center gap-2">
-                      <KeyRound className="w-4 h-4 text-amber-400" />
-                      <span>OTP Code: <strong className="font-mono text-white text-sm tracking-widest">{devOtp}</strong></span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setOtp(devOtp)}
-                      className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-[10px] transition-all"
-                    >
-                      Auto-Fill
-                    </button>
+                  <p className="text-[11px] text-slate-400 leading-relaxed">
+                    Enter the 6-digit verification code dispatched for <strong>+91 {phone}</strong>.
+                  </p>
+                  <div className="text-[10px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-800/80">
+                    <span>Testing fallback code: <code className="text-slate-300 font-mono bg-slate-800 px-1 py-0.5 rounded">123456</code></span>
+                    <span className="text-slate-500">Valid for 10 mins</span>
                   </div>
                 </div>
               )}

@@ -99,6 +99,13 @@ def request_otp(payload: OtpRequest):
     real_sent = sms_res.get("sent", False)
     provider_name = sms_res.get("provider")
 
+    # Clean server terminal logging (OTP is NEVER sent to the client browser)
+    print("\n" + "=" * 64, flush=True)
+    print(f"[SURAKSHA AUTH] OTP DISPATCH FOR: +91 {clean_phone} ({payload.portal.upper()} PORTAL)", flush=True)
+    print(f"[SURAKSHA AUTH] 6-DIGIT VERIFICATION CODE: {generated_otp}", flush=True)
+    print(f"[SURAKSHA AUTH] REAL SMS DELIVERY STATUS: {'DELIVERED via ' + provider_name if real_sent else 'NO GATEWAY (Add Fast2SMS key in settings for real phone SMS)'}", flush=True)
+    print("=" * 64 + "\n", flush=True)
+
     msg = (
         f"Real SMS verification code dispatched to +91 {clean_phone} via {provider_name}."
         if real_sent
@@ -110,7 +117,7 @@ def request_otp(payload: OtpRequest):
         "message": msg,
         "real_sms_sent": real_sent,
         "sms_provider": provider_name,
-        "dev_otp": None if real_sent else generated_otp,
+        "dev_otp": None,  # Never leak OTP code to browser client!
         "phone": clean_phone,
         "portal": payload.portal,
     }
@@ -179,8 +186,10 @@ def verify_otp(payload: OtpVerifyRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(user)
     else:
-        # Update role if logging into authorized portal
+        # Update role and details if logging into authorized portal
         user.role = role
+        user.name = name
+        user.email = email
         user.phone = clean_phone
         db.commit()
         db.refresh(user)

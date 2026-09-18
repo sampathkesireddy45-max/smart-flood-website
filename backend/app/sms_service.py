@@ -24,7 +24,11 @@ class SmsService:
         has_fast2sms = bool(self.fast2sms_api_key and len(self.fast2sms_api_key.strip()) > 5)
         has_2factor = bool(self.two_factor_api_key and len(self.two_factor_api_key.strip()) > 5)
         has_twilio = bool(
-            self.twilio_account_sid and self.twilio_auth_token and self.twilio_phone_number
+            self.twilio_account_sid
+            and self.twilio_account_sid.strip().startswith("AC")
+            and self.twilio_auth_token
+            and len(self.twilio_auth_token.strip()) > 10
+            and self.twilio_phone_number
         )
 
         active = None
@@ -118,6 +122,12 @@ class SmsService:
 
         # 1. Fast2SMS (Preferred Indian OTP Route)
         if self.fast2sms_api_key and len(self.fast2sms_api_key.strip()) > 5:
+            headers = {
+                "authorization": self.fast2sms_api_key.strip(),
+                "Content-Type": "application/json",
+                "cache-control": "no-cache",
+            }
+            # Attempt 1: OTP Route
             try:
                 url = "https://www.fast2sms.com/dev/bulkV2"
                 payload = {
@@ -125,10 +135,26 @@ class SmsService:
                     "variables_values": otp,
                     "numbers": clean_phone,
                 }
-                headers = {
-                    "authorization": self.fast2sms_api_key.strip(),
-                    "Content-Type": "application/json",
-                    "cache-control": "no-cache",
+                res = requests.post(url, json=payload, headers=headers, timeout=6.0)
+                if res.status_code == 200:
+                    data = res.json()
+                    if data.get("return") is True:
+                        return {
+                            "sent": True,
+                            "provider": "Fast2SMS (OTP Route)",
+                            "message": f"Real SMS OTP dispatched to +91 {clean_phone} via Fast2SMS.",
+                        }
+            except Exception as e:
+                logger.warning(f"Fast2SMS OTP route attempt failed: {e}")
+
+            # Attempt 2: Quick SMS Route (q) - no DLT registration required
+            try:
+                url = "https://www.fast2sms.com/dev/bulkV2"
+                payload = {
+                    "route": "q",
+                    "message": f"SURAKSHA: Your flood system verification OTP code is {otp}. Valid for 10 minutes.",
+                    "language": "english",
+                    "numbers": clean_phone,
                 }
                 res = requests.post(url, json=payload, headers=headers, timeout=6.0)
                 if res.status_code == 200:
@@ -136,20 +162,13 @@ class SmsService:
                     if data.get("return") is True:
                         return {
                             "sent": True,
-                            "provider": "Fast2SMS",
-                            "message": f"Real SMS OTP dispatched to +91 {clean_phone} via Fast2SMS telecom gateway.",
+                            "provider": "Fast2SMS (Quick SMS)",
+                            "message": f"Real SMS OTP dispatched to +91 {clean_phone} via Fast2SMS Quick SMS.",
                         }
                     else:
-                        logger.warning(f"Fast2SMS error response: {data}")
-                        return {
-                            "sent": False,
-                            "provider": "Fast2SMS",
-                            "message": data.get("message", ["Fast2SMS dispatch error"])[0],
-                        }
-                else:
-                    logger.warning(f"Fast2SMS HTTP {res.status_code}: {res.text}")
+                        logger.warning(f"Fast2SMS Quick SMS error: {data}")
             except Exception as e:
-                logger.error(f"Fast2SMS request failed: {e}")
+                logger.error(f"Fast2SMS Quick SMS attempt failed: {e}")
 
         # 2. 2Factor.in (Indian SMS Provider)
         if self.two_factor_api_key and len(self.two_factor_api_key.strip()) > 5:
@@ -170,7 +189,9 @@ class SmsService:
         # 3. Twilio (International Standard)
         if (
             self.twilio_account_sid
+            and self.twilio_account_sid.strip().startswith("AC")
             and self.twilio_auth_token
+            and len(self.twilio_auth_token.strip()) > 10
             and self.twilio_phone_number
         ):
             try:
