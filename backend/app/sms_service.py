@@ -121,12 +121,16 @@ class SmsService:
             clean_phone = clean_phone[-10:]
 
         # 1. Fast2SMS (Preferred Indian OTP Route)
+        if not self.fast2sms_api_key:
+            self.fast2sms_api_key = settings.FAST2SMS_API_KEY
+
         if self.fast2sms_api_key and len(self.fast2sms_api_key.strip()) > 5:
             headers = {
                 "authorization": self.fast2sms_api_key.strip(),
                 "Content-Type": "application/json",
                 "cache-control": "no-cache",
             }
+            last_err = None
             # Attempt 1: OTP Route
             try:
                 url = "https://www.fast2sms.com/dev/bulkV2"
@@ -136,18 +140,27 @@ class SmsService:
                     "numbers": clean_phone,
                 }
                 res = requests.post(url, json=payload, headers=headers, timeout=6.0)
-                if res.status_code == 200:
+                try:
                     data = res.json()
-                    if data.get("return") is True:
-                        return {
-                            "sent": True,
-                            "provider": "Fast2SMS (OTP Route)",
-                            "message": f"Real SMS OTP dispatched to +91 {clean_phone} via Fast2SMS.",
-                        }
+                except Exception:
+                    data = {}
+
+                if res.status_code == 200 and data.get("return") is True:
+                    return {
+                        "sent": True,
+                        "provider": "Fast2SMS (OTP Route)",
+                        "message": f"Real SMS OTP dispatched to +91 {clean_phone} via Fast2SMS.",
+                    }
+                else:
+                    last_err = data.get("message")
+                    if isinstance(last_err, list) and last_err:
+                        last_err = last_err[0]
+                    logger.warning(f"Fast2SMS OTP route response ({res.status_code}): {last_err or res.text}")
             except Exception as e:
                 logger.warning(f"Fast2SMS OTP route attempt failed: {e}")
+                last_err = str(e)
 
-            # Attempt 2: Quick SMS Route (q) - no DLT registration required
+            # Attempt 2: Quick SMS Route (q)
             try:
                 url = "https://www.fast2sms.com/dev/bulkV2"
                 payload = {
@@ -157,16 +170,28 @@ class SmsService:
                     "numbers": clean_phone,
                 }
                 res = requests.post(url, json=payload, headers=headers, timeout=6.0)
-                if res.status_code == 200:
+                try:
                     data = res.json()
-                    if data.get("return") is True:
-                        return {
-                            "sent": True,
-                            "provider": "Fast2SMS (Quick SMS)",
-                            "message": f"Real SMS OTP dispatched to +91 {clean_phone} via Fast2SMS Quick SMS.",
-                        }
-                    else:
-                        logger.warning(f"Fast2SMS Quick SMS error: {data}")
+                except Exception:
+                    data = {}
+
+                if res.status_code == 200 and data.get("return") is True:
+                    return {
+                        "sent": True,
+                        "provider": "Fast2SMS (Quick SMS)",
+                        "message": f"Real SMS OTP dispatched to +91 {clean_phone} via Fast2SMS Quick SMS.",
+                    }
+                else:
+                    q_err = data.get("message")
+                    if isinstance(q_err, list) and q_err:
+                        q_err = q_err[0]
+                    last_err = q_err or last_err
+                    logger.warning(f"Fast2SMS Quick SMS response ({res.status_code}): {last_err or res.text}")
+                    return {
+                        "sent": False,
+                        "provider": "Fast2SMS",
+                        "message": f"Fast2SMS Notice: {last_err}",
+                    }
             except Exception as e:
                 logger.error(f"Fast2SMS Quick SMS attempt failed: {e}")
 

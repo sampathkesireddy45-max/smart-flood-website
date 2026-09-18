@@ -36,7 +36,11 @@ class Settings(BaseSettings):
     TWILIO_PHONE_NUMBER: str = os.getenv("TWILIO_PHONE_NUMBER", "")
 
     class Config:
-        env_file = ".env"
+        env_file = [
+            os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"),
+            ".env",
+            "../.env"
+        ]
         extra = "ignore"
 
 settings = Settings()

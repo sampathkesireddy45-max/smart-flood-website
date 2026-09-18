@@ -140,14 +140,11 @@ def verify_otp(payload: OtpVerifyRequest, db: Session = Depends(get_db)):
     record = OTP_STORE.get(clean_phone)
     entered_otp = payload.otp.strip()
 
-    # Verify matching OTP or demo backup code 123456
+    # Strict verification: OTP must match the actively generated code and not be expired (10 mins)
     valid = False
     if record and record.get("otp") == entered_otp:
-        # Check expiry (10 mins)
         if time.time() - record.get("created_at", 0) < 600:
             valid = True
-    elif entered_otp == "123456" or (record and entered_otp == record.get("otp")):
-        valid = True
 
     if not valid:
         raise HTTPException(

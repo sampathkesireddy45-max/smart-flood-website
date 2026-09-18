@@ -404,7 +404,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
                     Enter the 6-digit verification code dispatched for <strong>+91 {phone}</strong>.
                   </p>
                   <div className="text-[10px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-800/80">
-                    <span>Testing fallback code: <code className="text-slate-300 font-mono bg-slate-800 px-1 py-0.5 rounded">123456</code></span>
+                    <span>Awaiting SMS verification code</span>
                     <span className="text-slate-500">Valid for 10 mins</span>
                   </div>
                 </div>
