@@ -7,6 +7,26 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
+class OtpRequest(BaseModel):
+    phone: str
+    portal: str = "citizen"  # "citizen" or "admin"
+
+class OtpVerifyRequest(BaseModel):
+    phone: str
+    otp: str
+    portal: str = "citizen"  # "citizen" or "admin"
+
+class OtpResponse(BaseModel):
+    success: bool
+    message: str
+    dev_otp: Optional[str] = None
+    phone: str
+    portal: str
+
+class AuthConfigResponse(BaseModel):
+    admin_phone: str
+    mode: str
+
 class UserResponse(BaseModel):
     id: int
     name: str

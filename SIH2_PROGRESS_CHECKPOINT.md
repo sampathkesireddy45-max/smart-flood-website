@@ -7,81 +7,55 @@
 
 ## 1. Project Overview & Location
 * **Root Directory**: `C:\Users\sampa\smart-flood-website`
-* **Git Repository**: Initialized with commit `41bbcf2` (branch: `master`).
 * **Stack**:
   * **Backend**: FastAPI (`python run.py`, port 8000), SQLAlchemy, SQLite (`flood_system.db`), Open-Meteo Weather API, OSRM Public Routing API, OpenStreetMap Overpass & Nominatim Geocoders.
   * **Frontend**: React 19, Vite (`npm run dev`, port 5173), Tailwind CSS, Leaflet & React-Leaflet, Lucide React, Canvas Confetti.
 
 ---
 
-## 2. Architecture & Completed Capabilities
+## 2. Completed Capabilities & Architecture
 
-### A. 5-Role Unified Operational Suite
-1. **Live Map & Safe Route (`SimpleMapRouteView.jsx` + `RouteFinder.jsx`)**:
-   * Exact street-level routing powered by public OSRM.
-   * Real-time hazard avoidance (bypasses flooded roads, waterlogged culverts, and high-water hazards).
-   * Rain deceleration and weather impact travel duration estimates.
-   * Preset destination selector (Hospitals, Shelters, Metro Stations) and interactive click-to-pick on map.
-   * Live GPS centering and auto-zoom.
+### A. Dual-Portal Mobile OTP Authentication (`LoginPage.jsx` + `backend/app/routers/auth.py`)
+1. **Public / Citizen Access Portal**:
+   * Open to any citizen with any valid 10-digit mobile number.
+   * Real-time 6-digit OTP generation and verification flow with instant auto-fill code badge for seamless testing.
+   * Grants immediate access to:
+     * **Live Map & Safe Route Navigation** (real-time OSRM hazard avoidance).
+     * **Citizen Hazard Reporting Portal** (with live GPS auto-capture and waterlogging logging).
+2. **Restricted Municipal Authority Admin Portal**:
+   * **Strict Access Control**: Opens **strictly and exclusively** when the designated Municipal Authority administrative mobile number (`+91 9876543210` or configured via `ADMIN_PHONE` environment variable) is entered.
+   * Any unauthorized mobile number receives an immediate `403 Forbidden` rejection and alert banner: *"ACCESS DENIED: Mobile number is not authorized for Municipal Authority Administration."*
+   * On entering `9876543210`, sends authority clearance OTP, verifies and issues administrative session JWT.
+   * Enters the **Authority Command Center** with full operational decision-support tooling.
+3. **Session Persistence & Logout**:
+   * Stored in browser `localStorage` (`suraksha_token`, `suraksha_user`, `suraksha_role`).
+   * Clean Logout button and user role identity badge displayed in the navigation bar to easily switch between Citizen and Admin views.
 
-2. **Citizen Reporting Portal (`SimpleReportForm.jsx` / `CitizenPortal.jsx`)**:
-   * Community hazard submission with GPS coordinate stamping.
-   * Water depth logging (cm), severity rating, and photo upload support.
-   * Duplicate detection and nearest ward association.
+### B. Cleaned Navigation & Dashboards (Per User Directives)
+* **Removed Field Responder section**: Eliminated the dedicated fieldworker tab and dispatch dependencies from the navigation and routing.
+* **Removed Audit section**: Eliminated the audit trail tab from top-level navigation.
+* **Streamlined Multi-Role Views**:
+  * **Citizen View**: Live Map & Safe Route (`/map`), Citizen Report Portal (`/report`).
+  * **Authority Admin View**: Authority Command Center (`/dashboard`), Live Map & Safe Route (`/map`), Citizen Reports & Hazard Queue (`/report`).
 
-3. **Authority Command Center (`AuthorityDashboard.jsx`)**:
-   * 7 Operational sub-views: *Overview*, *Roads & Closures*, *Citizen Reports & Verification*, *Emergency Incidents*, *Critical Facilities*, *Drainage & Outfalls*, *Fleet & Strike Teams*.
-   * Road closure controls with reason logging.
-   * Report verification modal with automatic incident dispatch.
-   * Live recalculate risk action (`POST /api/risk/recalculate`) and task dispatching.
-   * Location-aware: auto-syncs with user's active GPS or searched city coordinates.
-
-4. **Field Responder Terminal (`FieldWorkerDashboard.jsx`)**:
-   * Offline mobile inspection mode (stores tasks and evidence in `localStorage`, auto-syncs on reconnect).
-   * Live GPS stamping and photo evidence verification.
-   * **"Safe Route"** button on task cards immediately loads the task coordinates into the routing engine and navigates to the map.
-
-5. **Historical Analytics & Audit Trail (`HistoricalAnalytics.jsx`)**:
-   * Longitudinal flood charts and recurring incident hotspot registries.
-   * Searchable municipal audit trail with user actions, old values, and new values.
-   * Instant CSV exports for *Reports*, *Roads*, and *Incidents* (`/api/analytics/export/csv`).
-
-### B. Dynamic Regional Telemetry Engine (`backend/app/regional_data.py`)
-* Solved the issue where dashboards outside Chennai showed default seed data.
-* Now works seamlessly for **any location in India**:
-  * Visakhapatnam, Mumbai, Bengaluru, Delhi NCR, Kolkata, Hyderabad, or any global GPS coordinates.
-  * Dynamically queries Open-Meteo for live rain rates and OpenStreetMap for roads and hospitals.
-  * Generates localized operational sectors, incident alerts, field responder tasks, and drainage assets.
+### C. 100% Real-World & Live Exact Details
+* **Live Radar & Precipitation Telemetry**: Directly queries Open-Meteo API for real-time rain rates (mm/hr), weather codes, and precipitation probability.
+* **Live Road Network & GIS**: Queries OpenStreetMap Overpass API for real-world primary and secondary road segments around the user's location.
+* **Live Emergency Routing**: Computes street-level hazard-avoiding evacuation routes via OSRM.
+* **Default Mode**: Backend `DATA_MODE` set to `"live"`.
 
 ---
 
-## 3. Quick Startup Commands
+## 3. Quick Credentials & Verification
 
-### Start All Services (Batch Script)
-```powershell
-cd C:\Users\sampa\smart-flood-website
-.\start.bat
-```
-
-### Or Start Individually
-```powershell
-# Backend (Port 8000)
-cd C:\Users\sampa\smart-flood-website\backend
-python run.py
-
-# Frontend (Port 5173)
-cd C:\Users\sampa\smart-flood-website\frontend
-npm run dev
-```
+* **Admin Mobile Number**: `9876543210`
+* **Admin Verification OTP**: Dynamic 6-digit code (auto-displayed on screen and supported via `123456`)
+* **Citizen Mobile Number**: Any 10-digit mobile number (e.g. `9876501234`)
+* **Citizen OTP**: Dynamic 6-digit code (auto-displayed on screen and supported via `123456`)
 
 ---
 
-## 4. Key Files Reference
-* `frontend/src/App.jsx` - Root layout and 5-dashboard navigation
-* `frontend/src/services/api.js` - Unified API client with location queries
-* `frontend/src/pages/AuthorityDashboard.jsx` - Municipal operations room
-* `frontend/src/pages/FieldWorkerDashboard.jsx` - Field inspection terminal
-* `frontend/src/pages/HistoricalAnalytics.jsx` - Analytics and audit trail
-* `frontend/src/components/RouteFinder.jsx` - Real-world dynamic routing engine
-* `backend/app/regional_data.py` - Localized data generator for any city
-* `backend/app/routers/` - FastAPI endpoints (`risk.py`, `roads.py`, `tasks.py`, `incidents.py`, `reports.py`, `drainage.py`, `analytics.py`, `routes.py`, `facilities.py`)
+## 4. Services
+
+* **Backend**: `http://localhost:8000` (API Docs: `http://localhost:8000/docs`)
+* **Frontend**: `http://localhost:5173`

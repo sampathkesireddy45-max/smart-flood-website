@@ -20,6 +20,24 @@ async function request(endpoint, options = {}) {
 }
 
 export const api = {
+  // Authentication & OTP Verification
+  requestOtp: (phone, portal = "citizen") =>
+    request("/auth/request-otp", {
+      method: "POST",
+      body: JSON.stringify({ phone, portal }),
+    }),
+  verifyOtp: (phone, otp, portal = "citizen") =>
+    request("/auth/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ phone, otp, portal }),
+    }),
+  getAuthConfig: () => request("/auth/config"),
+  login: (email, password) =>
+    request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
   // Weather
   getCurrentWeather: (lat, lng) => {
     let q = [];

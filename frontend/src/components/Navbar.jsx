@@ -9,10 +9,11 @@ import {
   RotateCcw,
   Compass,
   AlertTriangle,
-  BarChart3,
   Crosshair,
-  Truck,
-  History
+  LogOut,
+  User,
+  ShieldCheck,
+  Users
 } from "lucide-react";
 
 export const Navbar = ({
@@ -25,7 +26,9 @@ export const Navbar = ({
   onOpenSimulator,
   onOpenDemoTour,
   onResetDemo,
-  isDemoResetting
+  isDemoResetting,
+  currentUser,
+  onLogout,
 }) => {
   const [searchInput, setSearchInput] = useState("");
 
@@ -37,6 +40,7 @@ export const Navbar = ({
   };
 
   const QUICK_CITIES = ["Chennai", "Mumbai", "Bengaluru", "Delhi", "Kolkata"];
+  const isAuthority = currentUser?.role === "authority";
 
   return (
     <header className="sticky top-0 z-40 bg-slate-950/95 backdrop-blur-md border-b border-slate-800/80 px-4 lg:px-8 py-3 transition-colors">
@@ -48,7 +52,11 @@ export const Navbar = ({
           {/* Logo & Title */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-600 to-blue-400 flex items-center justify-center shadow-lg shadow-brand-500/25 ring-1 ring-white/20">
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ring-1 ring-white/20 ${
+                isAuthority
+                  ? "bg-gradient-to-tr from-purple-600 to-indigo-500 shadow-purple-500/25"
+                  : "bg-gradient-to-tr from-brand-600 to-blue-400 shadow-brand-500/25"
+              }`}>
                 <ShieldAlert className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -56,8 +64,16 @@ export const Navbar = ({
                   <h1 className="text-base lg:text-lg font-bold tracking-tight text-white">
                     SURAKSHA-FLOOD
                   </h1>
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30">
-                    Live Telemetry
+                  <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
+                    isAuthority
+                      ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                      : "bg-brand-500/20 text-brand-300 border border-brand-500/30"
+                  }`}>
+                    {isAuthority ? "Admin Terminal" : "Public Safety"}
+                  </span>
+                  <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hidden sm:inline-flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    Live Data
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 hidden sm:block">
@@ -66,7 +82,7 @@ export const Navbar = ({
               </div>
             </div>
 
-            {/* Mobile Actions */}
+            {/* Mobile Actions: Tour & Logout */}
             <div className="flex items-center gap-1.5 lg:hidden">
               <button
                 onClick={onOpenDemoTour}
@@ -74,6 +90,15 @@ export const Navbar = ({
               >
                 Tour
               </button>
+              {onLogout && (
+                <button
+                  onClick={onLogout}
+                  title="Log out & Switch Portal"
+                  className="p-1.5 rounded-lg bg-slate-900 border border-slate-800 text-rose-400 hover:text-white"
+                >
+                  <LogOut className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
@@ -101,7 +126,7 @@ export const Navbar = ({
             </button>
           </div>
 
-          {/* Right Action Buttons */}
+          {/* Right Action Buttons & User Profile */}
           <div className="hidden lg:flex items-center gap-2">
             {weather && (
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-xs text-slate-300">
@@ -137,12 +162,64 @@ export const Navbar = ({
             >
               <RotateCcw className={`w-4 h-4 ${isDemoResetting ? "animate-spin text-brand-400" : ""}`} />
             </button>
+
+            {/* Authenticated User Badge & Logout */}
+            {currentUser && (
+              <div className="flex items-center gap-1.5 pl-2 border-l border-slate-800">
+                <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs ${
+                  isAuthority
+                    ? "bg-purple-950/40 border-purple-800/60 text-purple-200"
+                    : "bg-emerald-950/40 border-emerald-800/60 text-emerald-200"
+                }`}>
+                  {isAuthority ? (
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+                  ) : (
+                    <Users className="w-3.5 h-3.5 text-emerald-400" />
+                  )}
+                  <div className="text-left leading-tight">
+                    <span className="font-bold block text-[11px]">
+                      {isAuthority ? "Authority Admin" : "Citizen"}
+                    </span>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      +91 {currentUser.phone || "Verified"}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  title="Logout & Switch Portal"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-slate-900 border border-slate-800 hover:border-rose-500/50 hover:bg-rose-950/20 text-slate-400 hover:text-rose-400 text-xs font-semibold transition-all"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span className="hidden xl:inline">Logout</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Bottom Bar: Multi-Role Dashboard Navigation (5 views) */}
+        {/* Bottom Bar: Cleaned Dashboard Navigation (Field Responder & Audit Removed) */}
         <div className="flex items-center justify-between pt-1.5 border-t border-slate-900 overflow-x-auto">
           <nav className="flex items-center gap-1.5 min-w-max">
+            
+            {/* For Municipal Authority Admin */}
+            {isAuthority && (
+              <button
+                onClick={() => setActiveTab("dashboard")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                  activeTab === "dashboard"
+                    ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-1 ring-purple-400/30"
+                    : "text-slate-400 hover:text-white hover:bg-slate-900"
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>Authority Command</span>
+              </button>
+            )}
+
+            {/* Live Map & Safe Route (Available to both roles) */}
             <button
               onClick={() => setActiveTab("map")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -155,6 +232,7 @@ export const Navbar = ({
               <span>Live Map & Safe Route</span>
             </button>
 
+            {/* Citizen Reporting Portal / Hazard Oversight */}
             <button
               onClick={() => setActiveTab("report")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -164,54 +242,19 @@ export const Navbar = ({
               }`}
             >
               <AlertTriangle className="w-3.5 h-3.5" />
-              <span>Citizen Portal</span>
+              <span>{isAuthority ? "Citizen Reports & Hazards" : "Citizen Portal"}</span>
             </button>
 
-            <button
-              onClick={() => setActiveTab("dashboard")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "dashboard"
-                  ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-900"
-              }`}
-            >
-              <ShieldAlert className="w-3.5 h-3.5" />
-              <span>Authority Command</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("fieldworker")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "fieldworker"
-                  ? "bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/30 font-extrabold"
-                  : "text-slate-400 hover:text-white hover:bg-slate-900"
-              }`}
-            >
-              <Truck className="w-3.5 h-3.5" />
-              <span>Field Responder</span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab("analytics")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "analytics"
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                  : "text-slate-400 hover:text-white hover:bg-slate-900"
-              }`}
-            >
-              <History className="w-3.5 h-3.5" />
-              <span>Analytics & Audit</span>
-            </button>
           </nav>
 
           {/* Quick city presets */}
           <div className="hidden md:flex items-center gap-1.5 text-[11px] text-slate-500">
-            <span>Quick:</span>
+            <span>Live Cities:</span>
             {QUICK_CITIES.map((c) => (
               <button
                 key={c}
                 onClick={() => onSearchCity(c)}
-                className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors"
+                className="px-2 py-0.5 rounded bg-slate-900 hover:bg-slate-800 text-slate-400 hover:text-white transition-colors font-medium"
               >
                 {c}
               </button>

@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Smart Urban Flood Management & Decision Support System"
     VERSION: str = "1.0.0"
     API_PREFIX: str = "/api"
-    DATA_MODE: str = os.getenv("DATA_MODE", "mock")  # "mock" or "live"
+    DATA_MODE: str = os.getenv("DATA_MODE", "live")  # "live" or "mock"
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./flood_system.db")
     JWT_SECRET: str = os.getenv("JWT_SECRET", "super-secret-flood-mgmt-key-2026")
     JWT_ALGORITHM: str = "HS256"
@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     CITY_NAME: str = "Greater Metropolitan Zone"
     DEFAULT_LAT: float = 13.0827
     DEFAULT_LNG: float = 80.2707
+
+    # Designated Municipal Authority Admin Mobile Number (Restricted Access)
+    ADMIN_PHONE: str = os.getenv("ADMIN_PHONE", "9876543210")
 
     class Config:
         env_file = ".env"

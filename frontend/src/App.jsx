@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { ToastProvider, useToast } from "./components/Toast";
 import { Navbar } from "./components/Navbar";
+import { LoginPage } from "./components/LoginPage";
 import { SimpleMapRouteView } from "./components/SimpleMapRouteView";
 import { SimpleReportForm } from "./components/SimpleReportForm";
 import { AuthorityDashboard } from "./pages/AuthorityDashboard";
-import { FieldWorkerDashboard } from "./pages/FieldWorkerDashboard";
-import { HistoricalAnalytics } from "./pages/HistoricalAnalytics";
 import { WhyRiskModal } from "./components/WhyRiskModal";
 import { WhatIfSimulator } from "./components/WhatIfSimulator";
 import { SihDemoWalkthrough } from "./components/SihDemoWalkthrough";
@@ -13,7 +12,29 @@ import { api } from "./services/api";
 
 function AppContent() {
   const { addToast } = useToast();
-  const [activeTab, setActiveTab] = useState("map"); // "map" | "report" | "dashboard" | "fieldworker" | "analytics"
+
+  // Authentication State with LocalStorage Persistence
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem("suraksha_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
+  // Active Tab: "map" | "report" | "dashboard"
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem("suraksha_user");
+      if (saved) {
+        const u = JSON.parse(saved);
+        return u.role === "authority" ? "dashboard" : "map";
+      }
+    } catch {}
+    return "map";
+  });
+
   const [targetDestination, setTargetDestination] = useState(null);
   
   // Real-World Location State
@@ -89,8 +110,10 @@ function AppContent() {
   }, [center]);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (currentUser) {
+      loadData();
+    }
+  }, [currentUser, loadData]);
 
   // 3. Exact GPS Locator Handler
   const handleUseMyLocation = () => {
@@ -108,7 +131,6 @@ function AppContent() {
           addToast(`📍 Location locked: ${lat}, ${lng}`, "success");
         },
         () => {
-          // Default to high-risk basin zone
           const lat = 13.0835;
           const lng = 80.2810;
           setUserLocation({ lat, lng });
@@ -146,7 +168,6 @@ function AppContent() {
       console.warn("Geocoding fetch failed:", err);
     }
 
-    // Fallback dictionary for major Indian cities
     const CITY_COORDS = {
       chennai: [13.0827, 80.2707],
       mumbai: [19.0760, 72.8777],
@@ -189,17 +210,28 @@ function AppContent() {
     addToast(`Ready to report at coordinates ${coords.lat}, ${coords.lng}`, "info");
   };
 
-  const handleNavigateToTask = (task) => {
-    setTargetDestination({
-      name: `${task.task_code}: ${task.title}`,
-      lat: task.latitude,
-      lng: task.longitude,
-    });
-    setCenter([task.latitude, task.longitude]);
-    setZoom(15);
+  const handleLogout = () => {
+    localStorage.removeItem("suraksha_token");
+    localStorage.removeItem("suraksha_user");
+    localStorage.removeItem("suraksha_role");
+    setCurrentUser(null);
     setActiveTab("map");
-    addToast(`Plotting safe route to task location (${task.latitude.toFixed(4)}, ${task.longitude.toFixed(4)})`, "info");
+    addToast("Logged out. Switched to login portal.", "info");
   };
+
+  // If user is not authenticated, render Login Page
+  if (!currentUser) {
+    return (
+      <LoginPage
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          setActiveTab(user.role === "authority" ? "dashboard" : "map");
+        }}
+      />
+    );
+  }
+
+  const isAuthority = currentUser.role === "authority";
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-brand-500 selection:text-white">
@@ -216,11 +248,30 @@ function AppContent() {
         onOpenDemoTour={() => setIsDemoTourOpen(true)}
         onResetDemo={handleResetDemo}
         isDemoResetting={isDemoResetting}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
-      {/* Main Content View (5 Practical Real-Life Dashboards) */}
+      {/* Main Content View (Cleaned: Field Responder & Audit removed) */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 lg:px-8 pt-6">
-        {activeTab === "map" && (
+        {/* Authority Command Dashboard (Restricted to Municipal Authority Admin) */}
+        {activeTab === "dashboard" && isAuthority && (
+          <AuthorityDashboard
+            weather={weather}
+            center={center}
+            userLocation={userLocation}
+            cityName={cityName}
+            onOpenWhyRisk={() => {
+              if (wards.length > 0) setSelectedWardForExplain(wards[0]);
+            }}
+            selectedWardForExplain={selectedWardForExplain}
+            onSelectWardForExplain={setSelectedWardForExplain}
+            onOpenSimulator={() => setIsSimulatorOpen(true)}
+          />
+        )}
+
+        {/* Live GIS Map & Safe Route Navigation (Available to both Citizen & Admin) */}
+        {(activeTab === "map" || (activeTab === "dashboard" && !isAuthority)) && (
           <SimpleMapRouteView
             wards={wards}
             roads={roads}
@@ -236,49 +287,18 @@ function AppContent() {
             onUseMyLocation={handleUseMyLocation}
             onSelectWard={(w) => setSelectedWardForExplain(w)}
             onSelectRoad={(r) => {
-              setActiveTab("dashboard");
+              if (isAuthority) setActiveTab("dashboard");
             }}
             onReportAtLocation={handleReportAtLocation}
           />
         )}
 
+        {/* Citizen Report Form / Incident Hazard Queue */}
         {activeTab === "report" && (
           <SimpleReportForm
             initialLocation={reportInitialLocation || userLocation}
             reports={reports}
             onReportSubmitted={() => loadData()}
-          />
-        )}
-
-        {activeTab === "dashboard" && (
-          <AuthorityDashboard
-            weather={weather}
-            center={center}
-            userLocation={userLocation}
-            cityName={cityName}
-            onOpenWhyRisk={() => {
-              if (wards.length > 0) setSelectedWardForExplain(wards[0]);
-            }}
-            selectedWardForExplain={selectedWardForExplain}
-            onSelectWardForExplain={setSelectedWardForExplain}
-            onOpenSimulator={() => setIsSimulatorOpen(true)}
-          />
-        )}
-
-        {activeTab === "fieldworker" && (
-          <FieldWorkerDashboard
-            center={center}
-            userLocation={userLocation}
-            cityName={cityName}
-            onNavigateToTask={handleNavigateToTask}
-          />
-        )}
-
-        {activeTab === "analytics" && (
-          <HistoricalAnalytics
-            center={center}
-            userLocation={userLocation}
-            cityName={cityName}
           />
         )}
       </main>
@@ -295,7 +315,7 @@ function AppContent() {
             </p>
           </div>
           <div className="text-[10px] text-slate-500 text-center sm:text-right">
-            Decision-support output based on available radar telemetry and road reports.
+            Real-world radar telemetry & OpenStreetMap GIS network integration.
           </div>
         </div>
       </footer>

@@ -18,7 +18,8 @@ import {
   Layers,
   Flame,
   Radio,
-  RefreshCw
+  RefreshCw,
+  Activity
 } from "lucide-react";
 import { StatCard } from "../components/StatCard";
 import { MapView } from "../components/MapView";
@@ -336,11 +337,11 @@ export const AuthorityDashboard = ({
             icon={Navigation}
           />
           <StatCard
-            title="Open Field Tasks"
+            title="Active Operations"
             value={kpis.open_tasks_count}
-            subtitle="Field teams active"
+            subtitle="Live Incident Actions"
             variant="emerald"
-            icon={Truck}
+            icon={Activity}
           />
         </div>
       )}
