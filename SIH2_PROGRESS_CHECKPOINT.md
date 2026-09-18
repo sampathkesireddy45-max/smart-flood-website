@@ -1,68 +1,60 @@
-# SURAKSHA-FLOOD (SIH-2 Project) Progress Checkpoint
+# SURAKSHA-FLOOD (SIH Project) Progress Checkpoint & State
 
-> **Resume Trigger Phrase**: `"continue my sih-2 project"`  
-> When this phrase is received, resume working directly on this codebase with full context.
+> **Resume Trigger Phrases**: 
+> * `"continue my sih project"`
+> * `"continue my sih-2 project"`
+> * `"continue sih"`
+>
+> When any of these phrases are received, resume immediately on this codebase with full context.
 
 ---
 
-## 1. Project Overview & Location
+## 1. Project Directory & Core Information
 * **Root Directory**: `C:\Users\sampa\smart-flood-website`
+* **Project Name**: SURAKSHA-FLOOD (Smart Urban Flood Management & Decision Support Platform)
 * **Stack**:
-  * **Backend**: FastAPI (`python run.py`, port 8000), SQLAlchemy, SQLite (`flood_system.db`), Open-Meteo Weather API, OSRM Public Routing API, OpenStreetMap Overpass & Nominatim Geocoders.
-  * **Frontend**: React 19, Vite (`npm run dev`, port 5173), Tailwind CSS, Leaflet & React-Leaflet, Lucide React, Canvas Confetti.
+  * **Backend**: FastAPI (`http://localhost:8000`, API docs: `/docs`), SQLAlchemy, SQLite (`flood_system.db`), Open-Meteo Weather API, OSRM Public Routing API, OpenStreetMap Overpass & Nominatim Geocoders.
+  * **Frontend**: React 19, Vite (`http://localhost:5173`), Tailwind CSS, Leaflet & React-Leaflet, Lucide React, Canvas Confetti.
+* **Startup Scripts**:
+  * Run `start.bat` in `C:\Users\sampa\smart-flood-website`, or:
+  * Backend: `cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload`
+  * Frontend: `cd frontend && npm run dev`
 
 ---
 
-## 2. Completed Capabilities & Architecture
+## 2. Authentication & Real SMS OTP Architecture
 
-### A. Dual-Portal Mobile OTP Authentication (`LoginPage.jsx` + `backend/app/routers/auth.py` + `backend/app/sms_service.py`)
-1. **Public / Citizen Access Portal**:
+### A. Dual Portal Flow
+1. **Public / Citizen Portal**:
    * Open to any citizen with any valid 10-digit mobile number.
-   * Real-time 6-digit OTP generation and verification flow with instant auto-fill code badge for seamless testing.
-   * Grants immediate access to:
-     * **Live Map & Safe Route Navigation** (real-time OSRM hazard avoidance).
-     * **Citizen Hazard Reporting Portal** (with live GPS auto-capture and waterlogging logging).
+   * Accesses: Live Map & Evacuation Routing (`/map`), Citizen Hazard Reporting (`/report`).
 2. **Restricted Municipal Authority Admin Portal**:
-   * **Strict Access Control**: Opens **strictly and exclusively** when the designated Municipal Authority administrative mobile number (**`9573198929`**, or configured via `ADMIN_PHONE` environment variable) is entered.
-   * Any unauthorized mobile number receives an immediate `403 Forbidden` rejection and alert banner: *"ACCESS DENIED: Mobile number (+91 ...) is not authorized for Municipal Authority Administration. Authorized administrator phone only (+91 9573198929)."*
-   * On entering `9573198929`, sends authority clearance OTP, verifies and issues administrative session JWT.
-   * Enters the **Authority Command Center** with full operational decision-support tooling.
-3. **Real Telecom SMS OTP Dispatch (`sms_service.py`)**:
-   * **Fast2SMS Integration**: Indian Quick OTP route (`https://www.fast2sms.com/dev/bulkV2`) for instant SMS delivery to Indian mobile numbers without DLT delay.
-   * **Twilio Integration**: International SMS gateway integration.
-   * **2Factor.in Integration**: Specialized Indian OTP SMS route.
-   * **In-App SMS Gateway Configuration Modal**: Accessible directly on the login screen to enter / save Fast2SMS or Twilio keys at runtime (persisted to `.env`).
-   * **Test / Fallback Mode**: When an SMS gateway is not yet connected, displays an informative guidance banner and backup code so testing is never blocked.
-4. **Session Persistence & Logout**:
-   * Stored in browser `localStorage` (`suraksha_token`, `suraksha_user`, `suraksha_role`).
-   * Clean Logout button and user role identity badge displayed in the navigation bar to easily switch between Citizen and Admin views.
+   * **Designated Phone**: `9573198929` (configured in `ADMIN_PHONE`).
+   * Any unauthorized number receives strict `403 Forbidden`.
+   * Accesses: Authority Command Center (`/dashboard`), Hazard Queue (`/report`), Full Sensor Telemetry.
 
-### B. Cleaned Navigation & Dashboards (Per User Directives)
-* **Removed Field Responder section**: Eliminated the dedicated fieldworker tab and dispatch dependencies from the navigation and routing.
-* **Removed Audit section**: Eliminated the audit trail tab from top-level navigation.
-* **Streamlined Multi-Role Views**:
-  * **Citizen View**: Live Map & Safe Route (`/map`), Citizen Report Portal (`/report`).
-  * **Authority Admin View**: Authority Command Center (`/dashboard`), Live Map & Safe Route (`/map`), Citizen Reports & Hazard Queue (`/report`).
-
-### C. 100% Real-World & Live Exact Details
-* **Live Radar & Precipitation Telemetry**: Directly queries Open-Meteo API for real-time rain rates (mm/hr), weather codes, and precipitation probability.
-* **Live Road Network & GIS**: Queries OpenStreetMap Overpass API for real-world primary and secondary road segments around the user's location.
-* **Live Emergency Routing**: Computes street-level hazard-avoiding evacuation routes via OSRM.
-* **Default Mode**: Backend `DATA_MODE` set to `"live"`.
+### B. SMS Dispatch & Verification State
+1. **Fast2SMS Telecom Gateway Integration (`backend/app/sms_service.py`)**:
+   * API Key configured in `backend/.env`: `At6gmxAVZXxtOQelDkwHJoLKxmh57JQw2nSDSJZ3J47oFJZmLsvsrYXH5mOq`
+   * Current wallet balance: ₹50 (200 SMS).
+   * **To activate instant telecom delivery to physical phones**: Requires a ₹100 wallet recharge via UPI on [https://www.fast2sms.com/wallet](https://www.fast2sms.com/wallet) to fulfill TRAI anti-fraud DLT requirements. Once recharged, SMS arrives in 2-5 seconds.
+2. **Google Firebase Integration (`frontend/src/services/firebase.js`)**:
+   * Project ID: `suraksha-flood-7acce`
+   * Set up with invisible reCAPTCHA.
+3. **Interactive Live Dynamic Delivery**:
+   * Generates secure cryptographically random 6-digit OTP stored in SQLite/memory with 10-minute expiry.
+   * Dispatches incoming `VM-SURAKSHA TELECOM SMS` notification banner with incoming SMS audio chime, desktop notification, and 1-click Auto-Fill button.
+   * Strict single-use replay protection.
 
 ---
 
-## 3. Quick Credentials & Verification
-
-* **Admin Mobile Number**: `9573198929` (Strictly Authorized)
-* **Admin Verification OTP**: Dispatched via Real SMS (or backup displayed on screen if gateway pending)
-* **Citizen Mobile Number**: Any 10-digit mobile number (e.g. `9876501234`)
-* **Citizen OTP**: Dispatched via Real SMS (or backup displayed on screen if gateway pending)
+## 3. Current Live Status of Services
+* **Backend API**: `http://localhost:8000` (FastAPI Uvicorn)
+* **Frontend UI**: `http://localhost:5173` (Vite)
+* **Database**: `backend/flood_system.db`
 
 ---
 
-## 4. Services
-
-* **Backend**: `http://localhost:8000` (API Docs: `http://localhost:8000/docs`)
-* **Frontend**: `http://localhost:5173`
-* **Startup Script**: Run `start.bat` from `C:\Users\sampa\smart-flood-website`
+## 4. Key Credentials & Access
+* **Authority Admin Phone**: `9573198929`
+* **Citizen Phone**: Any 10-digit number

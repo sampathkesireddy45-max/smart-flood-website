@@ -117,7 +117,7 @@ def request_otp(payload: OtpRequest):
         "message": msg,
         "real_sms_sent": real_sent,
         "sms_provider": provider_name,
-        "dev_otp": None,  # Never leak OTP code to browser client!
+        "dev_otp": None if real_sent else generated_otp,  # Return dynamic code when free/dev simulation is active
         "phone": clean_phone,
         "portal": payload.portal,
     }

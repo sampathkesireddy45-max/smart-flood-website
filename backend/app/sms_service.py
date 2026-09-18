@@ -139,7 +139,7 @@ class SmsService:
                     "variables_values": otp,
                     "numbers": clean_phone,
                 }
-                res = requests.post(url, json=payload, headers=headers, timeout=6.0)
+                res = requests.post(url, json=payload, headers=headers, timeout=3.0)
                 try:
                     data = res.json()
                 except Exception:
@@ -169,7 +169,7 @@ class SmsService:
                     "language": "english",
                     "numbers": clean_phone,
                 }
-                res = requests.post(url, json=payload, headers=headers, timeout=6.0)
+                res = requests.post(url, json=payload, headers=headers, timeout=3.0)
                 try:
                     data = res.json()
                 except Exception:
@@ -199,7 +199,7 @@ class SmsService:
         if self.two_factor_api_key and len(self.two_factor_api_key.strip()) > 5:
             try:
                 url = f"https://2factor.in/API/V1/{self.two_factor_api_key.strip()}/SMS/{clean_phone}/{otp}/OTP1"
-                res = requests.get(url, timeout=6.0)
+                res = requests.get(url, timeout=3.0)
                 if res.status_code == 200:
                     data = res.json()
                     if data.get("Status") == "Success":
@@ -229,7 +229,7 @@ class SmsService:
                     "From": self.twilio_phone_number.strip(),
                     "Body": f"SURAKSHA-FLOOD: Your verification code is {otp}. Valid for 10 minutes. Do not share.",
                 }
-                res = requests.post(url, data=data, auth=auth, timeout=6.0)
+                res = requests.post(url, data=data, auth=auth, timeout=3.0)
                 if res.status_code in [200, 201]:
                     return {
                         "sent": True,
