@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { api } from "../services/api";
 import { useToast } from "./Toast";
+import { dispatchFirebaseOtp } from "../services/firebase";
 
 export const LoginPage = ({ onLoginSuccess }) => {
   const { addToast } = useToast();
@@ -33,6 +34,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
   const [step, setStep] = useState("phone"); // "phone" | "otp"
   const [realSmsSent, setRealSmsSent] = useState(false);
   const [smsProvider, setSmsProvider] = useState(null);
+  const [confirmationResult, setConfirmationResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   
@@ -69,6 +71,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
     setPortal(newPortal);
     setStep("phone");
     setOtp("");
+    setConfirmationResult(null);
     setRealSmsSent(false);
     setErrorMsg("");
     setPhone("");
@@ -94,18 +97,38 @@ export const LoginPage = ({ onLoginSuccess }) => {
 
     setLoading(true);
     try {
-      const res = await api.requestOtp(cleanPhone, portal);
-      if (res.success) {
-        setRealSmsSent(Boolean(res.real_sms_sent));
-        setSmsProvider(res.sms_provider || null);
-        setStep("otp");
-        if (res.real_sms_sent) {
-          addToast(`📲 Verification code sent via SMS to +91 ${cleanPhone}!`, "success");
-        } else {
-          addToast("Verification code dispatched!", "info");
+      // 1. Primary Route: Google Firebase Phone Auth (Delivers real telecom SMS directly to phone)
+      let fbSuccess = false;
+      try {
+        const confirmation = await dispatchFirebaseOtp(cleanPhone, "recaptcha-container");
+        if (confirmation) {
+          setConfirmationResult(confirmation);
+          setRealSmsSent(true);
+          setSmsProvider("Google Firebase Telecom");
+          setStep("otp");
+          addToast(`📲 Real SMS OTP sent to +91 ${cleanPhone} via Google!`, "success");
+          fbSuccess = true;
         }
-      } else {
-        setErrorMsg(res.message || "Failed to dispatch OTP.");
+      } catch (fbErr) {
+        console.warn("Google Firebase Phone Auth attempt notice:", fbErr);
+        // If Firebase fails or quota reached, fallback seamlessly to backend SMS gateway
+      }
+
+      // 2. Secondary Route: Backend SMS Dispatch (Fast2SMS / Twilio)
+      if (!fbSuccess) {
+        const res = await api.requestOtp(cleanPhone, portal);
+        if (res.success) {
+          setRealSmsSent(Boolean(res.real_sms_sent));
+          setSmsProvider(res.sms_provider || null);
+          setStep("otp");
+          if (res.real_sms_sent) {
+            addToast(`📲 Verification code sent via SMS to +91 ${cleanPhone}!`, "success");
+          } else {
+            addToast("Verification code dispatched!", "info");
+          }
+        } else {
+          setErrorMsg(res.message || "Failed to dispatch OTP.");
+        }
       }
     } catch (err) {
       const detail = err?.message || "Failed to send OTP.";
@@ -127,7 +150,23 @@ export const LoginPage = ({ onLoginSuccess }) => {
 
     setLoading(true);
     try {
-      const res = await api.verifyOtp(phone.replace(/\D/g, ""), otp.trim(), portal);
+      let isFirebaseVerified = false;
+
+      // If Firebase OTP confirmation is active, verify code with Google
+      if (confirmationResult) {
+        try {
+          await confirmationResult.confirm(otp.trim());
+          isFirebaseVerified = true;
+        } catch (confirmErr) {
+          console.error("Firebase confirmation failed:", confirmErr);
+          setErrorMsg("Invalid SMS verification code. Please enter the code sent to your phone.");
+          addToast("Verification failed", "error");
+          setLoading(false);
+          return;
+        }
+      }
+
+      const res = await api.verifyOtp(phone.replace(/\D/g, ""), otp.trim(), portal, isFirebaseVerified);
       if (res.access_token && res.user) {
         localStorage.setItem("suraksha_token", res.access_token);
         localStorage.setItem("suraksha_user", JSON.stringify(res.user));
@@ -184,6 +223,8 @@ export const LoginPage = ({ onLoginSuccess }) => {
 
       {/* Main Container */}
       <div className="w-full max-w-md relative z-10 space-y-5">
+        {/* Invisible Google reCAPTCHA Container for Firebase Phone Auth */}
+        <div id="recaptcha-container"></div>
         
         {/* Brand Header */}
         <div className="text-center space-y-2">

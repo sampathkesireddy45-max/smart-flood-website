@@ -15,6 +15,7 @@ class OtpVerifyRequest(BaseModel):
     phone: str
     otp: str
     portal: str = "citizen"  # "citizen" or "admin"
+    firebase_verified: Optional[bool] = False
 
 class OtpResponse(BaseModel):
     success: bool

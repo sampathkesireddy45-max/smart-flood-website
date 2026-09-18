@@ -140,9 +140,11 @@ def verify_otp(payload: OtpVerifyRequest, db: Session = Depends(get_db)):
     record = OTP_STORE.get(clean_phone)
     entered_otp = payload.otp.strip()
 
-    # Strict verification: OTP must match the actively generated code and not be expired (10 mins)
+    # Verification: Must be verified by Firebase or match actively generated server code (10 mins)
     valid = False
-    if record and record.get("otp") == entered_otp:
+    if payload.firebase_verified is True:
+        valid = True
+    elif record and record.get("otp") == entered_otp:
         if time.time() - record.get("created_at", 0) < 600:
             valid = True
 

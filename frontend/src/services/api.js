@@ -33,10 +33,10 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ phone, portal }),
     }),
-  verifyOtp: (phone, otp, portal = "citizen") =>
+  verifyOtp: (phone, otp, portal = "citizen", firebase_verified = false) =>
     request("/auth/verify-otp", {
       method: "POST",
-      body: JSON.stringify({ phone, otp, portal }),
+      body: JSON.stringify({ phone, otp, portal, firebase_verified }),
     }),
   getAuthConfig: () => request("/auth/config"),
   getSmsStatus: () => request("/auth/sms-status"),
