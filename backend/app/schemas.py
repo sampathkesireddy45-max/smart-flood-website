@@ -19,6 +19,8 @@ class OtpVerifyRequest(BaseModel):
 class OtpResponse(BaseModel):
     success: bool
     message: str
+    real_sms_sent: bool = False
+    sms_provider: Optional[str] = None
     dev_otp: Optional[str] = None
     phone: str
     portal: str
@@ -26,6 +28,23 @@ class OtpResponse(BaseModel):
 class AuthConfigResponse(BaseModel):
     admin_phone: str
     mode: str
+    sms_configured: bool = False
+    active_sms_provider: Optional[str] = None
+
+class SmsConfigUpdate(BaseModel):
+    fast2sms_api_key: Optional[str] = None
+    two_factor_api_key: Optional[str] = None
+    twilio_account_sid: Optional[str] = None
+    twilio_auth_token: Optional[str] = None
+    twilio_phone_number: Optional[str] = None
+
+class SmsStatusResponse(BaseModel):
+    sms_configured: bool
+    active_sms_provider: Optional[str] = None
+    fast2sms_configured: bool = False
+    two_factor_configured: bool = False
+    twilio_configured: bool = False
+    message: str
 
 class UserResponse(BaseModel):
     id: int

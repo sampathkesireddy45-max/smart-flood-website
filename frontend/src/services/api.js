@@ -10,7 +10,14 @@ async function request(endpoint, options = {}) {
       ...options,
     });
     if (!res.ok) {
-      throw new Error(`API error: ${res.status} ${res.statusText}`);
+      let detailMsg = `API error: ${res.status} ${res.statusText}`;
+      try {
+        const errorData = await res.json();
+        if (errorData && errorData.detail) {
+          detailMsg = typeof errorData.detail === "string" ? errorData.detail : JSON.stringify(errorData.detail);
+        }
+      } catch (_) {}
+      throw new Error(detailMsg);
     }
     return await res.json();
   } catch (err) {
@@ -32,6 +39,12 @@ export const api = {
       body: JSON.stringify({ phone, otp, portal }),
     }),
   getAuthConfig: () => request("/auth/config"),
+  getSmsStatus: () => request("/auth/sms-status"),
+  updateSmsConfig: (data) =>
+    request("/auth/sms-config", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
   login: (email, password) =>
     request("/auth/login", {
       method: "POST",

@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import User
 from ..config import settings
+from ..sms_service import sms_service
 from ..schemas import (
     UserLogin,
     TokenResponse,
@@ -15,6 +16,8 @@ from ..schemas import (
     OtpVerifyRequest,
     OtpResponse,
     AuthConfigResponse,
+    SmsConfigUpdate,
+    SmsStatusResponse,
 )
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -33,17 +36,38 @@ def normalize_phone(phone: str) -> str:
 
 @router.get("/config", response_model=AuthConfigResponse)
 def get_auth_config():
-    """Returns the designated municipal admin phone number and system mode."""
+    """Returns the designated municipal admin phone number, system mode, and SMS gateway status."""
+    sms_stat = sms_service.get_status()
     return {
         "admin_phone": normalize_phone(settings.ADMIN_PHONE),
         "mode": settings.DATA_MODE,
+        "sms_configured": sms_stat["sms_configured"],
+        "active_sms_provider": sms_stat["active_sms_provider"],
     }
+
+@router.get("/sms-status", response_model=SmsStatusResponse)
+def get_sms_status():
+    """Returns active SMS gateway integration status."""
+    return sms_service.get_status()
+
+@router.post("/sms-config", response_model=SmsStatusResponse)
+def update_sms_config(payload: SmsConfigUpdate):
+    """Dynamically configure SMS gateway credentials (Fast2SMS, 2Factor, or Twilio)."""
+    sms_service.update_credentials(
+        fast2sms_api_key=payload.fast2sms_api_key,
+        two_factor_api_key=payload.two_factor_api_key,
+        twilio_account_sid=payload.twilio_account_sid,
+        twilio_auth_token=payload.twilio_auth_token,
+        twilio_phone_number=payload.twilio_phone_number,
+    )
+    return sms_service.get_status()
 
 @router.post("/request-otp", response_model=OtpResponse)
 def request_otp(payload: OtpRequest):
     """
     Sends an OTP to the given mobile number.
     If portal is 'admin', strictly enforces that the phone must match ADMIN_PHONE.
+    Dispatches real telecom SMS via configured gateway (Fast2SMS / 2Factor / Twilio).
     """
     clean_phone = normalize_phone(payload.phone)
     if len(clean_phone) != 10:
@@ -58,7 +82,7 @@ def request_otp(payload: OtpRequest):
         if clean_phone != clean_admin_phone:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"ACCESS DENIED: Mobile number (+91 {clean_phone}) is not authorized for Municipal Authority Administration. Authorized administrator phone only.",
+                detail=f"ACCESS DENIED: Mobile number (+91 {clean_phone}) is not authorized for Municipal Authority Administration. Authorized administrator phone only (+91 {clean_admin_phone}).",
             )
 
     # Generate 6-digit OTP
@@ -70,10 +94,23 @@ def request_otp(payload: OtpRequest):
         "created_at": time.time(),
     }
 
+    # Dispatch Real SMS via SMS Gateway
+    sms_res = sms_service.send_real_otp(clean_phone, generated_otp)
+    real_sent = sms_res.get("sent", False)
+    provider_name = sms_res.get("provider")
+
+    msg = (
+        f"Real SMS verification code dispatched to +91 {clean_phone} via {provider_name}."
+        if real_sent
+        else f"6-Digit verification code dispatched to +91 {clean_phone}."
+    )
+
     return {
         "success": True,
-        "message": f"6-Digit verification code dispatched to +91 {clean_phone}",
-        "dev_otp": generated_otp,
+        "message": msg,
+        "real_sms_sent": real_sent,
+        "sms_provider": provider_name,
+        "dev_otp": None if real_sent else generated_otp,
         "phone": clean_phone,
         "portal": payload.portal,
     }

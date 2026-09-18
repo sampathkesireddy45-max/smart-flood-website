@@ -26,7 +26,14 @@ class Settings(BaseSettings):
     DEFAULT_LNG: float = 80.2707
 
     # Designated Municipal Authority Admin Mobile Number (Restricted Access)
-    ADMIN_PHONE: str = os.getenv("ADMIN_PHONE", "9876543210")
+    ADMIN_PHONE: str = os.getenv("ADMIN_PHONE", "9573198929")
+
+    # Real SMS Gateway Configurations for Real Mobile Delivery
+    FAST2SMS_API_KEY: str = os.getenv("FAST2SMS_API_KEY", "")
+    TWO_FACTOR_API_KEY: str = os.getenv("TWO_FACTOR_API_KEY", "")
+    TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
+    TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
+    TWILIO_PHONE_NUMBER: str = os.getenv("TWILIO_PHONE_NUMBER", "")
 
     class Config:
         env_file = ".env"
