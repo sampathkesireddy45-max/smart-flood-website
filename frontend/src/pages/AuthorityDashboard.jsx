@@ -24,7 +24,7 @@ import {
 import { StatCard } from "../components/StatCard";
 import { MapView } from "../components/MapView";
 import { WhyRiskModal } from "../components/WhyRiskModal";
-import { api } from "../services/api";
+import { api, API_BASE, getPhotoUrl } from "../services/api";
 import { useToast } from "../components/Toast";
 
 export const AuthorityDashboard = ({
@@ -35,7 +35,8 @@ export const AuthorityDashboard = ({
   onOpenWhyRisk,
   selectedWardForExplain,
   onSelectWardForExplain,
-  onOpenSimulator
+  onOpenSimulator,
+  onNavigateTab
 }) => {
   const { addToast } = useToast();
   const [kpis, setKpis] = useState(null);
@@ -372,10 +373,30 @@ export const AuthorityDashboard = ({
           ))}
         </div>
 
-        {/* Export CSV (Section 69) */}
+        {/* Quick Dashboard Jump & Export CSV */}
         <div className="hidden sm:flex items-center gap-2">
+          {onNavigateTab && (
+            <>
+              <button
+                onClick={() => onNavigateTab("field")}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-950/40 border border-amber-500/40 hover:bg-amber-900/40 text-amber-300 text-[11px] font-semibold hover-lift transition-all"
+                title="Switch to Field Response Inspection Terminal"
+              >
+                <Truck className="w-3 h-3 text-amber-400" />
+                <span>Field Terminal</span>
+              </button>
+              <button
+                onClick={() => onNavigateTab("analytics")}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-950/40 border border-indigo-500/40 hover:bg-indigo-900/40 text-indigo-300 text-[11px] font-semibold hover-lift transition-all"
+                title="Switch to Historical Flood Analytics & Audit Trail"
+              >
+                <Activity className="w-3 h-3 text-indigo-400" />
+                <span>Audit & Analytics</span>
+              </button>
+            </>
+          )}
           <a
-            href="http://localhost:8000/api/analytics/export/csv?dataset=reports"
+            href={`${API_BASE}/analytics/export/csv?dataset=reports`}
             download
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 text-[11px] font-medium hover-lift transition-all"
           >
@@ -383,7 +404,7 @@ export const AuthorityDashboard = ({
             CSV Reports
           </a>
           <a
-            href="http://localhost:8000/api/analytics/export/csv?dataset=roads"
+            href={`${API_BASE}/analytics/export/csv?dataset=roads`}
             download
             className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-700 text-slate-300 text-[11px] font-medium hover-lift transition-all"
           >
@@ -584,6 +605,17 @@ export const AuthorityDashboard = ({
                       {rpt.verification_status}
                     </span>
                   </div>
+
+                  {rpt.photo_url && (
+                    <div className="rounded-lg overflow-hidden border border-slate-800 bg-black/50 aspect-video">
+                      <img
+                        src={getPhotoUrl(rpt.photo_url)}
+                        alt="Ground Evidence"
+                        className="w-full h-full object-cover"
+                        onError={(e) => { e.target.style.display = "none"; }}
+                      />
+                    </div>
+                  )}
 
                   <p className="text-xs text-slate-200 font-medium">{rpt.description}</p>
 
@@ -928,11 +960,21 @@ export const AuthorityDashboard = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-5 space-y-4 animate-slide-up">
             <h3 className="text-base font-bold text-white">Review & Verify Ground Report</h3>
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-1">
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs space-y-2">
               <div className="flex justify-between font-mono text-amber-400 font-bold">
                 <span>{selectedReport.report_code}</span>
                 <span>{selectedReport.report_type}</span>
               </div>
+              {selectedReport.photo_url && (
+                <div className="rounded-lg overflow-hidden border border-slate-800 bg-black/60 aspect-video">
+                  <img
+                    src={getPhotoUrl(selectedReport.photo_url)}
+                    alt="Ground Evidence"
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.style.display = "none"; }}
+                  />
+                </div>
+              )}
               <p className="text-slate-200">{selectedReport.description}</p>
               <div className="text-[10px] text-slate-400">Water Level: {selectedReport.reported_water_level}</div>
             </div>

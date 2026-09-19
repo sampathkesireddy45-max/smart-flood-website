@@ -15,7 +15,7 @@ import {
   Plus
 } from "lucide-react";
 import { StatCard } from "./StatCard";
-import { api } from "../services/api";
+import { api, API_BASE, getPhotoUrl } from "../services/api";
 import { useToast } from "./Toast";
 
 export const SimpleAuthorityView = ({
@@ -87,7 +87,7 @@ export const SimpleAuthorityView = ({
 
         <div className="flex items-center gap-2">
           <a
-            href="http://localhost:8000/api/analytics/export/csv?dataset=reports"
+            href={`${API_BASE}/analytics/export/csv?dataset=reports`}
             download
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold hover-lift transition-all"
           >
@@ -205,6 +205,16 @@ export const SimpleAuthorityView = ({
                   <span className="font-mono font-bold text-amber-400">{rpt.report_code}</span>
                   <span className="text-[10px] text-slate-400">{rpt.reported_water_level}</span>
                 </div>
+                {rpt.photo_url && (
+                  <div className="rounded-lg overflow-hidden border border-slate-800 bg-black/50 aspect-video">
+                    <img
+                      src={getPhotoUrl(rpt.photo_url)}
+                      alt="Ground Evidence"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { e.target.style.display = "none"; }}
+                    />
+                  </div>
+                )}
                 <p className="text-slate-200 text-[11px] font-medium">{rpt.description}</p>
                 <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-850">
                   <span>By: {rpt.reporter_name}</span>
@@ -278,8 +288,18 @@ export const SimpleAuthorityView = ({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
           <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-5 space-y-4 animate-slide-up">
             <h3 className="text-base font-bold text-white">Verify Citizen Inundation Report</h3>
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-850 text-xs space-y-1">
+            <div className="p-3 rounded-xl bg-slate-950 border border-slate-850 text-xs space-y-2">
               <div className="font-mono font-bold text-amber-400">{selectedReport.report_code}</div>
+              {selectedReport.photo_url && (
+                <div className="rounded-lg overflow-hidden border border-slate-800 bg-black/60 aspect-video">
+                  <img
+                    src={getPhotoUrl(selectedReport.photo_url)}
+                    alt="Ground Evidence"
+                    className="w-full h-full object-cover"
+                    onError={(e) => { e.target.style.display = "none"; }}
+                  />
+                </div>
+              )}
               <p className="text-slate-200">{selectedReport.description}</p>
               <div className="text-[10px] text-slate-400">Water Depth: {selectedReport.reported_water_level}</div>
             </div>

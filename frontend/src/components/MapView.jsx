@@ -16,6 +16,7 @@ import {
   Globe,
   ShieldCheck
 } from "lucide-react";
+import { getPhotoUrl } from "../services/api";
 
 // Fix leaflet default icons
 delete L.Icon.Default.prototype._getIconUrl;
@@ -107,6 +108,18 @@ const shelterIcon = createCustomIcon("⛺", "bg-emerald-600");
 const schoolIcon = createCustomIcon("🏫", "bg-amber-600");
 const reportIcon = createCustomIcon("⚠️", "bg-amber-500", true);
 const drainAssetIcon = createCustomIcon("🚰", "bg-sky-600");
+
+const emergencyBeaconIcon = L.divIcon({
+  className: "emergency-beacon-pin",
+  html: `
+    <div class="relative flex items-center justify-center w-8 h-8 rounded-full bg-rose-600 text-white shadow-2xl border-2 border-white ring-4 ring-rose-500/50 animate-pulse">
+      <span class="text-sm">🚨</span>
+    </div>
+  `,
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
+  popupAnchor: [0, -16],
+});
 
 function MapController({ center, zoom }) {
   const map = useMap();
@@ -686,28 +699,53 @@ export const MapView = ({
             </Marker>
           ))}
 
-        {/* 11. Citizen Reports */}
+        {/* 11. Citizen Reports & Distress Beacons */}
         {layers.reports &&
-          reports.map((rpt) => (
-            <Marker
-              key={`rpt-${rpt.id}`}
-              position={[rpt.latitude, rpt.longitude]}
-              icon={reportIcon}
-              eventHandlers={{
-                click: () => onSelectReport && onSelectReport(rpt),
-              }}
-            >
-              <Popup>
-                <div className="p-1 space-y-1 text-xs min-w-[180px]">
-                  <div className="font-bold text-amber-400">{rpt.report_code}</div>
-                  <div className="text-slate-200">{rpt.description}</div>
-                  <div className="text-[10px] text-slate-400">
-                    Depth: <strong className="text-white">{rpt.reported_water_level}</strong>
+          reports.map((rpt) => {
+            const isEmergencyBeacon = rpt.report_type === "EMERGENCY_EVACUATION";
+            return (
+              <Marker
+                key={`rpt-${rpt.id}`}
+                position={[rpt.latitude, rpt.longitude]}
+                icon={isEmergencyBeacon ? emergencyBeaconIcon : reportIcon}
+                eventHandlers={{
+                  click: () => onSelectReport && onSelectReport(rpt),
+                }}
+              >
+                <Popup>
+                  <div className="p-1.5 space-y-1 text-xs min-w-[200px]">
+                    <div className="flex items-center justify-between border-b border-slate-700 pb-1">
+                      <span className={`font-bold ${isEmergencyBeacon ? "text-rose-400" : "text-amber-400"}`}>
+                        {isEmergencyBeacon ? "🚨 ACTIVE EVACUEE BEACON" : rpt.report_code}
+                      </span>
+                      {isEmergencyBeacon && (
+                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300">
+                          CRITICAL
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-white font-medium text-[11px]">{rpt.description}</div>
+                    {rpt.photo_url && (
+                      <div className="mt-1.5 rounded-lg overflow-hidden border border-slate-750 bg-black/60 aspect-video">
+                        <img
+                          src={getPhotoUrl(rpt.photo_url)}
+                          alt="Ground Photo Evidence"
+                          className="w-full h-full object-cover"
+                          onError={(e) => { e.target.style.display = "none"; }}
+                        />
+                      </div>
+                    )}
+                    <div className="text-[10px] text-slate-400">
+                      Reported by: <strong className="text-slate-200">{rpt.reporter_name}</strong>
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-400">
+                      Coordinates: {rpt.latitude.toFixed(4)}, {rpt.longitude.toFixed(4)}
+                    </div>
                   </div>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+                </Popup>
+              </Marker>
+            );
+          })}
       </MapContainer>
     </div>
   );

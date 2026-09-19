@@ -37,8 +37,9 @@ app.add_middleware(
 )
 
 # Ensure uploads directory exists and mount static files
-os.makedirs("uploads", exist_ok=True)
-app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads"))
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 # Include Routers
 app.include_router(auth.router, prefix=settings.API_PREFIX)
@@ -56,8 +57,15 @@ app.include_router(analytics.router, prefix=settings.API_PREFIX)
 app.include_router(simulation.router, prefix=settings.API_PREFIX)
 app.include_router(demo.router, prefix=settings.API_PREFIX)
 
-@app.get("/")
-def root():
+from fastapi.responses import FileResponse
+from fastapi import HTTPException
+
+@app.get("/api/health")
+def health_check():
+    return {"status": "healthy", "database": "connected", "mode": settings.DATA_MODE}
+
+@app.get("/api/info")
+def api_info():
     return {
         "system": settings.PROJECT_NAME,
         "version": settings.VERSION,
@@ -66,6 +74,21 @@ def root():
         "docs_url": "/docs"
     }
 
-@app.get("/api/health")
-def health_check():
-    return {"status": "healthy", "database": "connected", "mode": settings.DATA_MODE}
+FRONTEND_DIST = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "dist"))
+
+if os.path.exists(FRONTEND_DIST) and os.path.isdir(os.path.join(FRONTEND_DIST, "assets")):
+    app.mount("/assets", StaticFiles(directory=os.path.join(FRONTEND_DIST, "assets")), name="frontend_assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str = ""):
+        clean = full_path.strip("/")
+        if clean.startswith("api") or clean.startswith("uploads") or clean in ["docs", "redoc", "openapi.json"]:
+            raise HTTPException(status_code=404, detail="Endpoint not found")
+        target_file = os.path.join(FRONTEND_DIST, clean)
+        if clean and os.path.isfile(target_file):
+            return FileResponse(target_file)
+        return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
+else:
+    @app.get("/")
+    def root():
+        return api_info()

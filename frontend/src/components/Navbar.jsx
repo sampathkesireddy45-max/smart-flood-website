@@ -5,7 +5,6 @@ import {
   MapPin,
   Search,
   Sliders,
-  Award,
   RotateCcw,
   Compass,
   AlertTriangle,
@@ -13,7 +12,9 @@ import {
   LogOut,
   User,
   ShieldCheck,
-  Users
+  Users,
+  UserCheck,
+  BarChart3
 } from "lucide-react";
 
 export const Navbar = ({
@@ -24,7 +25,6 @@ export const Navbar = ({
   onSearchCity,
   onUseMyLocation,
   onOpenSimulator,
-  onOpenDemoTour,
   onResetDemo,
   isDemoResetting,
   currentUser,
@@ -82,14 +82,8 @@ export const Navbar = ({
               </div>
             </div>
 
-            {/* Mobile Actions: Tour & Logout */}
+            {/* Mobile Actions: Logout */}
             <div className="flex items-center gap-1.5 lg:hidden">
-              <button
-                onClick={onOpenDemoTour}
-                className="px-2.5 py-1.5 rounded-lg bg-amber-500 text-slate-950 font-bold text-xs"
-              >
-                Tour
-              </button>
               {onLogout && (
                 <button
                   onClick={onLogout}
@@ -144,14 +138,6 @@ export const Navbar = ({
             >
               <Sliders className="w-3.5 h-3.5 text-brand-400" />
               <span>Simulator</span>
-            </button>
-
-            <button
-              onClick={onOpenDemoTour}
-              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-bold text-xs shadow-md shadow-amber-500/20 hover-lift transition-all"
-            >
-              <Award className="w-3.5 h-3.5" />
-              <span>Judge Tour</span>
             </button>
 
             <button
@@ -235,7 +221,7 @@ export const Navbar = ({
             {/* Citizen Reporting Portal / Hazard Oversight */}
             <button
               onClick={() => setActiveTab("report")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover-lift ${
                 activeTab === "report"
                   ? "bg-emerald-600 text-white shadow-lg shadow-emerald-600/30"
                   : "text-slate-400 hover:text-white hover:bg-slate-900"
@@ -245,6 +231,33 @@ export const Navbar = ({
               <span>{isAuthority ? "Citizen Reports & Hazards" : "Citizen Portal"}</span>
             </button>
 
+            {/* Field Responder & Ground Inspection Terminal (Authority only) */}
+            {isAuthority && (
+              <button
+                onClick={() => setActiveTab("field")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover-lift ${
+                  activeTab === "field"
+                    ? "bg-amber-600 text-slate-950 font-black shadow-lg shadow-amber-600/30 ring-1 ring-amber-400/40"
+                    : "text-slate-400 hover:text-white hover:bg-slate-900"
+                }`}
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Field Terminal</span>
+              </button>
+            )}
+
+            {/* Historical Analytics & Audit Trail */}
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all hover-lift ${
+                activeTab === "analytics"
+                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 ring-1 ring-indigo-400/30"
+                  : "text-slate-400 hover:text-white hover:bg-slate-900"
+              }`}
+            >
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>{isAuthority ? "Audit & Analytics" : "Flood Analytics"}</span>
+            </button>
           </nav>
 
           {/* Quick city presets */}

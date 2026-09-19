@@ -14,7 +14,7 @@ import {
   Search,
   Download
 } from "lucide-react";
-import { api } from "../services/api";
+import { api, API_BASE } from "../services/api";
 
 export const HistoricalAnalytics = ({
   center,
@@ -89,7 +89,7 @@ export const HistoricalAnalytics = ({
         {/* Action Controls & Real CSV Exports */}
         <div className="flex flex-wrap items-center gap-2">
           <a
-            href={`http://localhost:8000/api/analytics/export/csv?dataset=reports${locQuery}`}
+            href={`${API_BASE}/analytics/export/csv?dataset=reports${locQuery}`}
             download="citizen_flood_reports.csv"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all hover-lift"
             title="Download verified reports CSV"
@@ -98,7 +98,7 @@ export const HistoricalAnalytics = ({
             <span>Reports CSV</span>
           </a>
           <a
-            href={`http://localhost:8000/api/analytics/export/csv?dataset=roads${locQuery}`}
+            href={`${API_BASE}/analytics/export/csv?dataset=roads${locQuery}`}
             download="roads_operational_status.csv"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all hover-lift"
             title="Download road closure registry CSV"
@@ -107,7 +107,7 @@ export const HistoricalAnalytics = ({
             <span>Roads CSV</span>
           </a>
           <a
-            href={`http://localhost:8000/api/analytics/export/csv?dataset=incidents${locQuery}`}
+            href={`${API_BASE}/analytics/export/csv?dataset=incidents${locQuery}`}
             download="emergency_incidents.csv"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-semibold transition-all hover-lift"
             title="Download municipal emergency incidents CSV"

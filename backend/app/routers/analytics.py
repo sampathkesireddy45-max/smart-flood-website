@@ -12,7 +12,10 @@ from ..models import (
 from ..weather_service import weather_service
 from ..config import settings
 from ..schemas import DashboardKPI
-from ..regional_data import is_regional, get_regional_summary, get_regional_charts, get_regional_audit_logs
+from ..regional_data import (
+    is_regional, get_regional_summary, get_regional_charts,
+    get_regional_audit_logs, get_regional_incidents, get_regional_reports
+)
 
 router = APIRouter(prefix="/analytics", tags=["Historical Analytics & Summary KPIs"])
 

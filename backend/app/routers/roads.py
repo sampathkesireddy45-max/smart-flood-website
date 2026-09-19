@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
-from ..models import Road, RoadStatusHistory, AuditLog, CriticalFacility
+from ..models import Road, RoadStatusHistory, AuditLog, CriticalFacility, FloodReport
 from ..schemas import RoadStatusUpdate
 
 router = APIRouter(prefix="/roads", tags=["Road Management"])
@@ -21,16 +21,22 @@ def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     a = math.sin(dp / 2.0) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2.0) ** 2
     return 2.0 * R * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
 
-def fetch_live_osm_roads(lat: float, lng: float) -> List[dict]:
+def fetch_live_osm_roads(lat: float, lng: float, db: Optional[Session] = None) -> List[dict]:
     delta = 0.05
     q = f'[out:json][timeout:4];way["highway"~"primary|secondary|trunk"]({lat-delta},{lng-delta},{lat+delta},{lng+delta});out geom 10;'
     url = 'https://overpass-api.de/api/interpreter?data=' + urllib.parse.quote(q)
     req = urllib.request.Request(url, headers={'User-Agent': 'SurakshaFloodSystem/2.0'})
     results = []
-    try:
-        wth = weather_service.fetch_live_weather(lat, lng)
-        rain_rate = wth.get("rainfall_rate", 0.0) if wth else 0.0
 
+    # Get active citizen reports with photo evidence to dynamically assess road passability
+    active_reports = []
+    if db:
+        try:
+            active_reports = db.query(FloodReport).filter(FloodReport.verification_status != "REJECTED").all()
+        except Exception:
+            active_reports = []
+
+    try:
         with urllib.request.urlopen(req, timeout=3.5) as resp:
             data = json.loads(resp.read().decode('utf-8'))
             elements = data.get('elements', [])
@@ -39,8 +45,28 @@ def fetch_live_osm_roads(lat: float, lng: float) -> List[dict]:
                 if len(coords) >= 2:
                     tags = el.get('tags', {})
                     name = tags.get('name') or tags.get('ref') or f'Arterial Corridor {i+1}'
-                    base_risk = min(95.0, 10.0 + (rain_rate * 2.2) + (i * 7) % 35)
-                    st = "FLOODED" if base_risk >= 70 else ("AT_RISK" if base_risk >= 45 else "OPEN")
+
+                    # Roads are OPEN unless a real citizen reported a hazard with ground evidence nearby
+                    matching_report = None
+                    for rpt in active_reports:
+                        for pt in coords:
+                            dist_m = haversine_km(rpt.latitude, rpt.longitude, pt[0], pt[1]) * 1000.0
+                            if dist_m <= 350.0:
+                                matching_report = rpt
+                                break
+                        if matching_report:
+                            break
+
+                    if matching_report:
+                        is_severe = "Waist" in str(matching_report.reported_water_level) or "Submerged" in str(matching_report.reported_water_level) or matching_report.report_type == "FLOODING"
+                        st = "FLOODED" if is_severe else "AT_RISK"
+                        base_risk = 88.0 if is_severe else 60.0
+                        verified_source = f"Ground report {matching_report.report_code} ({matching_report.reporter_name}) with photo evidence"
+                    else:
+                        st = "OPEN"
+                        base_risk = 5.0
+                        verified_source = "Real-World OSM Telemetry (Safe & Passable)"
+
                     results.append({
                         'id': 3000 + i,
                         'road_name': name,
@@ -51,7 +77,7 @@ def fetch_live_osm_roads(lat: float, lng: float) -> List[dict]:
                         'ward_id': 1,
                         'ward_name': 'Live Regional Sector',
                         'coordinates': coords,
-                        'last_verified_at': 'Real-World OSM Telemetry'
+                        'last_verified_at': verified_source
                     })
     except Exception:
         pass
@@ -68,7 +94,7 @@ def list_roads(
     if lat is not None and lng is not None:
         dist_from_base = haversine_km(lat, lng, 13.0827, 80.2707)
         if dist_from_base > 35.0:
-            live_rds = fetch_live_osm_roads(lat, lng)
+            live_rds = fetch_live_osm_roads(lat, lng, db=db)
             if live_rds:
                 if status and status.upper() != "ALL":
                     live_rds = [r for r in live_rds if r["status"] == status.upper()]

@@ -1,15 +1,17 @@
 import re
 import random
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from ..database import get_db
-from ..models import User
+from ..models import User, FloodReport, Incident
 from ..config import settings
 from ..sms_service import sms_service
 from ..schemas import (
     UserLogin,
+    AdminLoginRequest,
+    EmergencyAccessRequest,
     TokenResponse,
     UserResponse,
     OtpRequest,
@@ -36,10 +38,10 @@ def normalize_phone(phone: str) -> str:
 
 @router.get("/config", response_model=AuthConfigResponse)
 def get_auth_config():
-    """Returns the designated municipal admin phone number, system mode, and SMS gateway status."""
+    """Returns system mode and SMS gateway status. Admin phone is protected and not exposed to public."""
     sms_stat = sms_service.get_status()
     return {
-        "admin_phone": normalize_phone(settings.ADMIN_PHONE),
+        "admin_phone": None,
         "mode": settings.DATA_MODE,
         "sms_configured": sms_stat["sms_configured"],
         "active_sms_provider": sms_stat["active_sms_provider"],
@@ -195,6 +197,123 @@ def verify_otp(payload: OtpVerifyRequest, db: Session = Depends(get_db)):
 
     return {
         "access_token": f"suraksha-jwt-{user.id}-{user.role}-{int(time.time())}",
+        "token_type": "bearer",
+        "user": user,
+    }
+
+@router.post("/emergency-access", response_model=TokenResponse)
+def emergency_access(payload: Optional[EmergencyAccessRequest] = None, db: Session = Depends(get_db)):
+    """
+    1-Click Zero-Data Emergency Access for Citizens fleeing flood hazards.
+    Requires no phone number, no email, no name. 100% anonymous & private.
+    When latitude and longitude are passed, logs real-time citizen distress beacon
+    in the database so the Municipal Authority Admin immediately receives the location.
+    """
+    anon_id = random.randint(10000, 99999)
+    email = f"emergency.citizen.{anon_id}@suraksha.emergency.gov.in"
+    user = User(
+        name=f"Anonymous Citizen #{anon_id}",
+        email=email,
+        password_hash="emergency_pass_zero_data",
+        role="citizen",
+        phone=None,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    # If citizen transmitted GPS location, log real-time distress beacon and incident for Admin Portal
+    lat = payload.latitude if payload else None
+    lng = payload.longitude if payload else None
+    if lat is not None and lng is not None:
+        try:
+            report_code = f"EVAC-{anon_id}"
+            report = FloodReport(
+                report_code=report_code,
+                reporter_name=f"Anonymous Citizen #{anon_id} (Active Evacuee)",
+                reporter_phone="Emergency Zero-Data Pass",
+                report_type="EMERGENCY_EVACUATION",
+                description="Citizen activated 1-Click Instant Emergency Evacuation Pass. Live distress location transmitted to Municipal Command Center.",
+                latitude=float(lat),
+                longitude=float(lng),
+                reported_water_level="Active Evacuation",
+                verification_status="VERIFIED",
+                severity="CRITICAL",
+                verified_by="SURAKSHA Autonomous System",
+                verification_notes="Autonomous emergency pass GPS location lock."
+            )
+            db.add(report)
+            db.commit()
+            db.refresh(report)
+
+            # High-priority Incident for Command Center
+            inc = Incident(
+                incident_code=f"INC-{report_code}",
+                incident_type="COMMUNITY_FLOOD",
+                title=f"🚨 Citizen Evacuation Distress Beacon #{anon_id}",
+                description=f"Active citizen evacuation at [{round(lat, 4)}, {round(lng, 4)}]. Automated beacon received at Command Center.",
+                latitude=float(lat),
+                longitude=float(lng),
+                priority="CRITICAL",
+                system_recommended_priority="CRITICAL",
+                status="NEW",
+                source_report_id=report.id,
+                created_by="Autonomous Emergency Gateway"
+            )
+            db.add(inc)
+            db.commit()
+            print(f"\n[SURAKSHA BEACON] Citizen #{anon_id} Evacuation Pass activated at ({lat}, {lng})! Transmitted to Admin Command Center.\n", flush=True)
+        except Exception as e:
+            print(f"[SURAKSHA BEACON] Error logging beacon: {e}", flush=True)
+            db.rollback()
+
+    return {
+        "access_token": f"suraksha-emergency-jwt-{user.id}-{int(time.time())}",
+        "token_type": "bearer",
+        "user": user,
+    }
+
+@router.post("/admin-login", response_model=TokenResponse)
+def admin_login(payload: AdminLoginRequest, db: Session = Depends(get_db)):
+    """
+    Secure password-based authentication for Municipal Authority Administrators.
+    Strictly verifies credentials. Password is not visible or exposed to the public.
+    """
+    entered_user = payload.username.strip().lower()
+    entered_pass = payload.password.strip()
+
+    valid_user = (
+        entered_user == settings.ADMIN_USERNAME.lower()
+        or entered_user == "admin"
+        or entered_user == "admin@floodauthority.gov.in"
+        or entered_user == normalize_phone(settings.ADMIN_PHONE)
+    )
+
+    if not valid_user or entered_pass != settings.ADMIN_PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid administrator credentials. Access denied.",
+        )
+
+    # Retrieve or create Municipal Authority Admin user
+    email = settings.ADMIN_USERNAME
+    user = db.query(User).filter(User.role == "authority").first()
+    if not user:
+        user = User(
+            name="Municipal Disaster Management Lead",
+            email=email,
+            password_hash="admin_authenticated",
+            role="authority",
+            phone=settings.ADMIN_PHONE,
+            is_active=True,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    return {
+        "access_token": f"suraksha-admin-jwt-{user.id}-{int(time.time())}",
         "token_type": "bearer",
         "user": user,
     }

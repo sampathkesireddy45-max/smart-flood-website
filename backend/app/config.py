@@ -1,12 +1,15 @@
 import os
 from pydantic_settings import BaseSettings
 
+_BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_DEFAULT_DB = os.path.join(_BASE_DIR, "flood_system.db").replace("\\", "/")
+
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Smart Urban Flood Management & Decision Support System"
     VERSION: str = "1.0.0"
     API_PREFIX: str = "/api"
     DATA_MODE: str = os.getenv("DATA_MODE", "live")  # "live" or "mock"
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./flood_system.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", f"sqlite:///{_DEFAULT_DB}")
     JWT_SECRET: str = os.getenv("JWT_SECRET", "super-secret-flood-mgmt-key-2026")
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
@@ -25,8 +28,10 @@ class Settings(BaseSettings):
     DEFAULT_LAT: float = 13.0827
     DEFAULT_LNG: float = 80.2707
 
-    # Designated Municipal Authority Admin Mobile Number (Restricted Access)
+    # Designated Municipal Authority Admin Credentials (Restricted Access)
     ADMIN_PHONE: str = os.getenv("ADMIN_PHONE", "9573198929")
+    ADMIN_USERNAME: str = os.getenv("ADMIN_USERNAME", "admin@floodauthority.gov.in")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "SurakshaAdmin@2026")
 
     # Real SMS Gateway Configurations for Real Mobile Delivery
     FAST2SMS_API_KEY: str = os.getenv("FAST2SMS_API_KEY", "")

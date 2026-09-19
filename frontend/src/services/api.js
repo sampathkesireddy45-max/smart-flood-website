@@ -1,4 +1,10 @@
-const API_BASE = "http://localhost:8000/api";
+export const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+export const API_BASE = `${BACKEND_URL}/api`;
+
+export const getPhotoUrl = (url) => {
+  if (!url) return "";
+  return url.startsWith("http") ? url : `${BACKEND_URL}${url.startsWith("/") ? "" : "/"}${url}`;
+};
 
 async function request(endpoint, options = {}) {
   try {
@@ -39,6 +45,16 @@ export const api = {
       body: JSON.stringify({ phone, otp, portal, firebase_verified }),
     }),
   getAuthConfig: () => request("/auth/config"),
+  emergencyAccess: (location = null) =>
+    request("/auth/emergency-access", {
+      method: "POST",
+      body: JSON.stringify(location || {}),
+    }),
+  adminLogin: (username, password) =>
+    request("/auth/admin-login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
   getSmsStatus: () => request("/auth/sms-status"),
   updateSmsConfig: (data) =>
     request("/auth/sms-config", {
@@ -136,6 +152,25 @@ export const api = {
     if (lat !== undefined && lat !== null) q.push(`lat=${lat}`);
     if (lng !== undefined && lng !== null) q.push(`lng=${lng}`);
     return request(`/reports${q.length ? "?" + q.join("&") : ""}`);
+  },
+  uploadHazardPhoto: async (file) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch(`${API_BASE}/reports/upload-photo`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      let detailMsg = "Photo upload failed";
+      try {
+        const err = await res.json();
+        if (err && err.detail) {
+          detailMsg = typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail);
+        }
+      } catch (_) {}
+      throw new Error(detailMsg);
+    }
+    return await res.json();
   },
   submitReport: (payload) =>
     request("/reports", {

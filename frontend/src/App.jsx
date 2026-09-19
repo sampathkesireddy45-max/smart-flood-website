@@ -5,9 +5,10 @@ import { LoginPage } from "./components/LoginPage";
 import { SimpleMapRouteView } from "./components/SimpleMapRouteView";
 import { SimpleReportForm } from "./components/SimpleReportForm";
 import { AuthorityDashboard } from "./pages/AuthorityDashboard";
+import { FieldWorkerDashboard } from "./pages/FieldWorkerDashboard";
+import { HistoricalAnalytics } from "./pages/HistoricalAnalytics";
 import { WhyRiskModal } from "./components/WhyRiskModal";
 import { WhatIfSimulator } from "./components/WhatIfSimulator";
-import { SihDemoWalkthrough } from "./components/SihDemoWalkthrough";
 import { api } from "./services/api";
 
 function AppContent() {
@@ -56,7 +57,6 @@ function AppContent() {
   // Modals
   const [selectedWardForExplain, setSelectedWardForExplain] = useState(null);
   const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
-  const [isDemoTourOpen, setIsDemoTourOpen] = useState(false);
   const [isDemoResetting, setIsDemoResetting] = useState(false);
   const [reportInitialLocation, setReportInitialLocation] = useState(null);
 
@@ -245,7 +245,6 @@ function AppContent() {
         onSearchCity={handleSearchCity}
         onUseMyLocation={handleUseMyLocation}
         onOpenSimulator={() => setIsSimulatorOpen(true)}
-        onOpenDemoTour={() => setIsDemoTourOpen(true)}
         onResetDemo={handleResetDemo}
         isDemoResetting={isDemoResetting}
         currentUser={currentUser}
@@ -267,6 +266,7 @@ function AppContent() {
             selectedWardForExplain={selectedWardForExplain}
             onSelectWardForExplain={setSelectedWardForExplain}
             onOpenSimulator={() => setIsSimulatorOpen(true)}
+            onNavigateTab={(tab) => setActiveTab(tab)}
           />
         )}
 
@@ -301,6 +301,34 @@ function AppContent() {
             onReportSubmitted={() => loadData()}
           />
         )}
+
+        {/* Field Responder & Inspection Terminal */}
+        {activeTab === "field" && (
+          <FieldWorkerDashboard
+            center={center}
+            userLocation={userLocation}
+            cityName={cityName}
+            onNavigateToTask={(task) => {
+              setTargetDestination({
+                name: `${task.title} (${task.location})`,
+                lat: task.latitude,
+                lng: task.longitude,
+                type: "TASK",
+              });
+              setActiveTab("map");
+              addToast(`🎯 Navigating safe route to: ${task.title}`, "info");
+            }}
+          />
+        )}
+
+        {/* Historical Flood Analytics & Immutable Audit Trail */}
+        {activeTab === "analytics" && (
+          <HistoricalAnalytics
+            center={center}
+            userLocation={userLocation}
+            cityName={cityName}
+          />
+        )}
       </main>
 
       {/* Clean Footer */}
@@ -333,14 +361,6 @@ function AppContent() {
           wards={wards}
           onClose={() => setIsSimulatorOpen(false)}
           onSimulationComplete={() => loadData()}
-        />
-      )}
-
-      {isDemoTourOpen && (
-        <SihDemoWalkthrough
-          onClose={() => setIsDemoTourOpen(false)}
-          onStepTriggered={() => loadData()}
-          onResetDemo={handleResetDemo}
         />
       )}
     </div>

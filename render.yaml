@@ -1,0 +1,25 @@
+services:
+  # All-in-One Service: FastAPI Backend + Built React 19 Frontend SPA
+  - type: web
+    name: suraksha-flood
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: singapore
+    envVars:
+      - key: DATA_MODE
+        value: live
+      - key: ADMIN_USERNAME
+        value: admin@floodauthority.gov.in
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: ADMIN_PHONE
+        value: "9573198929"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FAST2SMS_API_KEY
+        sync: false
+    disk:
+      name: flood-storage
+      mountPath: /app/backend/uploads
+      sizeGB: 1

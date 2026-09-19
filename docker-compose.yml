@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  suraksha-flood:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: suraksha_flood_app
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - PORT=8000
+      - DATA_MODE=live
+      - ADMIN_USERNAME=${ADMIN_USERNAME:-admin@floodauthority.gov.in}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-SurakshaAdmin@2026}
+      - ADMIN_PHONE=${ADMIN_PHONE:-9573198929}
+      - FAST2SMS_API_KEY=${FAST2SMS_API_KEY:-}
+      - TWO_FACTOR_API_KEY=${TWO_FACTOR_API_KEY:-}
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID:-}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN:-}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER:-}
+      - JWT_SECRET=${JWT_SECRET:-suraksha-production-secret-key-2026}
+    volumes:
+      - flood_db_data:/app/backend/data
+      - flood_uploads:/app/backend/uploads
+    restart: unless-stopped
+
+volumes:
+  flood_db_data:
+  flood_uploads:

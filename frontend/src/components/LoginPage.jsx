@@ -1,211 +1,136 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   ShieldAlert,
   Smartphone,
-  KeyRound,
-  CheckCircle2,
   AlertTriangle,
   Lock,
-  Compass,
   ArrowRight,
   ShieldCheck,
-  Building2,
   Users,
   RefreshCw,
-  Settings,
-  X,
-  Radio,
-  ExternalLink,
-  MessageSquare,
-  Copy,
-  Sparkles
+  Sparkles,
+  Zap,
+  ChevronRight,
+  Shield,
+  Eye,
+  EyeOff,
+  Key
 } from "lucide-react";
 import { api } from "../services/api";
 import { useToast } from "./Toast";
-import { dispatchFirebaseOtp } from "../services/firebase";
 
 export const LoginPage = ({ onLoginSuccess }) => {
   const { addToast } = useToast();
-  
+
   // Portals: "citizen" | "admin"
   const [portal, setPortal] = useState("citizen");
-  
-  // Form State
+
+  // Citizen Form State
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
   const [step, setStep] = useState("phone"); // "phone" | "otp"
-  const [realSmsSent, setRealSmsSent] = useState(false);
-  const [smsProvider, setSmsProvider] = useState(null);
   const [dispatchedOtp, setDispatchedOtp] = useState(null);
-  const [copied, setCopied] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [citizenLoading, setCitizenLoading] = useState(false);
+  const [emergencyLoading, setEmergencyLoading] = useState(false);
+
+  // Admin Form State (Password Authentication - Confidential & Not Visible to Public)
+  const [adminUsername, setAdminUsername] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [adminLoading, setAdminLoading] = useState(false);
+
   const [errorMsg, setErrorMsg] = useState("");
-
-  // Realistic Telecom SMS Notification Chime (Zero external dependencies)
-  const playSmsChime = () => {
-    try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      
-      const osc1 = ctx.createOscillator();
-      const gain1 = ctx.createGain();
-      osc1.type = "sine";
-      osc1.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-      gain1.gain.setValueAtTime(0.18, ctx.currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
-      osc1.connect(gain1);
-      gain1.connect(ctx.destination);
-      osc1.start(ctx.currentTime);
-      osc1.stop(ctx.currentTime + 0.28);
-
-      const osc2 = ctx.createOscillator();
-      const gain2 = ctx.createGain();
-      osc2.type = "sine";
-      osc2.frequency.setValueAtTime(880.0, ctx.currentTime + 0.12); // A5
-      gain2.gain.setValueAtTime(0.22, ctx.currentTime + 0.12);
-      gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.48);
-      osc2.connect(gain2);
-      gain2.connect(ctx.destination);
-      osc2.start(ctx.currentTime + 0.12);
-      osc2.stop(ctx.currentTime + 0.48);
-    } catch (_) {}
-  };
-
-  // Browser / OS Native Notification (Dispatches native banner to Windows/Android)
-  const showOsNotification = (otpCode, phoneNum) => {
-    try {
-      if (!("Notification" in window)) return;
-      const title = "🔔 SURAKSHA Verification Code";
-      const options = {
-        body: `SURAKSHA Flood Security: Your 6-digit verification code for +91 ${phoneNum} is ${otpCode}. Valid for 10 minutes.`,
-        icon: "/favicon.ico",
-        tag: "suraksha-otp",
-      };
-      if (Notification.permission === "granted") {
-        new Notification(title, options);
-      } else if (Notification.permission !== "denied") {
-        Notification.requestPermission().then((perm) => {
-          if (perm === "granted") {
-            new Notification(title, options);
-          }
-        });
-      }
-    } catch (_) {}
-  };
-  
-  // Auth & SMS Config from backend
-  const [adminPhone, setAdminPhone] = useState("9573198929");
-  const [systemMode, setSystemMode] = useState("LIVE");
-  const [smsGatewayConfigured, setSmsGatewayConfigured] = useState(false);
-  const [activeGatewayName, setActiveGatewayName] = useState(null);
-  
-  // SMS Gateway Settings Modal
-  const [isSmsModalOpen, setIsSmsModalOpen] = useState(false);
-  const [fast2smsKey, setFast2smsKey] = useState("");
-  const [twilioSid, setTwilioSid] = useState("");
-  const [twilioToken, setTwilioToken] = useState("");
-  const [twilioFrom, setTwilioFrom] = useState("");
-  const [savingSmsConfig, setSavingSmsConfig] = useState(false);
-
-  const fetchConfig = () => {
-    api.getAuthConfig()
-      .then((cfg) => {
-        if (cfg?.admin_phone) setAdminPhone(cfg.admin_phone);
-        if (cfg?.mode) setSystemMode(cfg.mode.toUpperCase());
-        if (cfg?.sms_configured !== undefined) setSmsGatewayConfigured(cfg.sms_configured);
-        if (cfg?.active_sms_provider) setActiveGatewayName(cfg.active_sms_provider);
-      })
-      .catch(() => {});
-  };
-
-  useEffect(() => {
-    fetchConfig();
-  }, []);
 
   const handleSwitchPortal = (newPortal) => {
     setPortal(newPortal);
     setStep("phone");
     setOtp("");
-    setConfirmationResult(null);
-    setRealSmsSent(false);
     setDispatchedOtp(null);
-    setCopied(false);
     setErrorMsg("");
     setPhone("");
+    setAdminUsername("");
+    setAdminPassword("");
   };
 
+  // 1-Click Instant Emergency Citizen Access (Zero Data / Transmits Distress Location to Admin)
+  const handleEmergencyAccess = async () => {
+    setErrorMsg("");
+    setEmergencyLoading(true);
+
+    // Capture real-time GPS coordinates of the evacuating citizen
+    let locationPayload = { latitude: 13.0827, longitude: 80.2707 };
+    if (navigator.geolocation) {
+      try {
+        const pos = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            timeout: 3500,
+            enableHighAccuracy: true,
+          });
+        });
+        if (pos?.coords) {
+          locationPayload = {
+            latitude: parseFloat(pos.coords.latitude.toFixed(4)),
+            longitude: parseFloat(pos.coords.longitude.toFixed(4)),
+          };
+        }
+      } catch (_) {
+        // Fallback to default metropolitan flood-basin center
+      }
+    }
+
+    try {
+      const res = await api.emergencyAccess(locationPayload);
+      if (res?.access_token && res?.user) {
+        localStorage.setItem("suraksha_token", res.access_token);
+        localStorage.setItem("suraksha_user", JSON.stringify(res.user));
+        localStorage.setItem("suraksha_role", "citizen");
+        addToast("🚨 Live Evacuation Pass Activated! Distress beacon received at Command Center.", "success");
+        onLoginSuccess(res.user);
+      } else {
+        throw new Error("Could not initialize emergency pass");
+      }
+    } catch (err) {
+      setErrorMsg("Failed to generate emergency pass. Please try again.");
+      addToast("Emergency pass activation failed", "error");
+    } finally {
+      setEmergencyLoading(false);
+    }
+  };
+
+  // Citizen Standard Phone Verification Request
   const handleRequestOtp = async (e) => {
     e?.preventDefault();
     setErrorMsg("");
     setDispatchedOtp(null);
-    setCopied(false);
-    
+
     const cleanPhone = phone.replace(/\D/g, "");
     if (cleanPhone.length < 10) {
       setErrorMsg("Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    if (portal === "admin" && cleanPhone !== adminPhone) {
-      setErrorMsg(
-        `ACCESS DENIED: Mobile number (+91 ${cleanPhone}) is NOT authorized for Municipal Authority Administration. Authorized Admin line only (+91 ${adminPhone}).`
-      );
-      addToast("Unauthorized admin mobile number", "error");
-      return;
-    }
-
-    setLoading(true);
+    setCitizenLoading(true);
     try {
-      // 1. Primary Route: Google Firebase Phone Auth (If test number or billing enabled)
-      let fbSuccess = false;
-      try {
-        const confirmation = await dispatchFirebaseOtp(cleanPhone, "recaptcha-container");
-        if (confirmation) {
-          setConfirmationResult(confirmation);
-          setRealSmsSent(true);
-          setSmsProvider("Google Firebase Telecom");
-          setStep("otp");
-          playSmsChime();
-          addToast(`📲 Firebase verification code sent to +91 ${cleanPhone}!`, "success");
-          fbSuccess = true;
+      const res = await api.requestOtp(cleanPhone, "citizen");
+      if (res.success) {
+        if (res.dev_otp) {
+          setDispatchedOtp(res.dev_otp);
         }
-      } catch (fbErr) {
-        console.warn("Firebase Phone Auth bypass to free dynamic route:", fbErr?.code || fbErr?.message);
-        setConfirmationResult(null);
-      }
-
-      // 2. 100% Free Guaranteed Route: Backend Dynamic OTP (Works for ALL mobile numbers)
-      if (!fbSuccess) {
-        const res = await api.requestOtp(cleanPhone, portal);
-        if (res.success) {
-          setRealSmsSent(Boolean(res.real_sms_sent));
-          setSmsProvider(res.sms_provider || null);
-          if (res.dev_otp) {
-            setDispatchedOtp(res.dev_otp);
-            showOsNotification(res.dev_otp, cleanPhone);
-          }
-          setStep("otp");
-          playSmsChime();
-          if (res.real_sms_sent) {
-            addToast(`📲 Verification code sent via SMS to +91 ${cleanPhone}!`, "success");
-          } else {
-            addToast(`📲 Dynamic verification code dispatched for +91 ${cleanPhone}!`, "success");
-          }
-        } else {
-          setErrorMsg(res.message || "Failed to dispatch OTP.");
-        }
+        setStep("otp");
+        addToast(`Verification code dispatched for +91 ${cleanPhone}!`, "success");
+      } else {
+        setErrorMsg(res.message || "Failed to dispatch verification code.");
       }
     } catch (err) {
-      const detail = err?.message || "Failed to send OTP.";
+      const detail = err?.message || "Failed to send code.";
       setErrorMsg(detail.replace("API error: 403 ", "").replace("API error: 400 ", ""));
-      addToast("Failed to request OTP", "error");
+      addToast("Failed to request code", "error");
     } finally {
-      setLoading(false);
+      setCitizenLoading(false);
     }
   };
 
+  // Citizen OTP Verification
   const handleVerifyOtp = async (e) => {
     e?.preventDefault();
     setErrorMsg("");
@@ -215,129 +140,91 @@ export const LoginPage = ({ onLoginSuccess }) => {
       return;
     }
 
-    setLoading(true);
+    setCitizenLoading(true);
     try {
-      let isFirebaseVerified = false;
-
-      // If Firebase OTP confirmation is active, verify code with Google
-      if (confirmationResult) {
-        try {
-          await confirmationResult.confirm(otp.trim());
-          isFirebaseVerified = true;
-        } catch (confirmErr) {
-          console.error("Firebase confirmation failed:", confirmErr);
-          setErrorMsg("Invalid SMS verification code. Please enter the code sent to your phone.");
-          addToast("Verification failed", "error");
-          setLoading(false);
-          return;
-        }
-      }
-
-      const res = await api.verifyOtp(phone.replace(/\D/g, ""), otp.trim(), portal, isFirebaseVerified);
+      const res = await api.verifyOtp(phone.replace(/\D/g, ""), otp.trim(), "citizen", false);
       if (res.access_token && res.user) {
         localStorage.setItem("suraksha_token", res.access_token);
         localStorage.setItem("suraksha_user", JSON.stringify(res.user));
         localStorage.setItem("suraksha_role", res.user.role);
-        addToast(`Authenticated as ${res.user.role === "authority" ? "Municipal Authority Admin" : "Citizen"}`, "success");
+        addToast("Authenticated as Citizen", "success");
         onLoginSuccess(res.user);
       }
     } catch (err) {
-      const detail = err?.message || "Invalid or expired OTP.";
-      setErrorMsg(detail.replace("API error: 400 ", "").replace("API error: 403 ", ""));
+      const detail = err?.message || "Invalid or expired code.";
+      setErrorMsg(detail.replace("API error: 400 ", ""));
       addToast("Verification failed", "error");
     } finally {
-      setLoading(false);
+      setCitizenLoading(false);
     }
   };
 
-  const handleQuickFillAdmin = () => {
-    setPhone(adminPhone);
+  // Admin Confidential Password Authentication (NO OTP, Private Credentials)
+  const handleAdminLogin = async (e) => {
+    e?.preventDefault();
     setErrorMsg("");
-  };
 
-  const handleQuickFillCitizen = () => {
-    setPhone("9876501234");
-    setErrorMsg("");
-  };
+    if (!adminUsername.trim() || !adminPassword.trim()) {
+      setErrorMsg("Please enter administrator username/email and password.");
+      return;
+    }
 
-  const handleSaveSmsConfig = async (e) => {
-    e.preventDefault();
-    setSavingSmsConfig(true);
+    setAdminLoading(true);
     try {
-      const payload = {};
-      if (fast2smsKey.trim()) payload.fast2sms_api_key = fast2smsKey.trim();
-      if (twilioSid.trim()) payload.twilio_account_sid = twilioSid.trim();
-      if (twilioToken.trim()) payload.twilio_auth_token = twilioToken.trim();
-      if (twilioFrom.trim()) payload.twilio_phone_number = twilioFrom.trim();
-
-      const res = await api.updateSmsConfig(payload);
-      setSmsGatewayConfigured(res.sms_configured);
-      setActiveGatewayName(res.active_sms_provider);
-      addToast(res.message || "SMS Gateway configuration updated!", "success");
-      setIsSmsModalOpen(false);
+      const res = await api.adminLogin(adminUsername.trim(), adminPassword.trim());
+      if (res?.access_token && res?.user) {
+        localStorage.setItem("suraksha_token", res.access_token);
+        localStorage.setItem("suraksha_user", JSON.stringify(res.user));
+        localStorage.setItem("suraksha_role", res.user.role);
+        addToast("Authority Clearance Verified: Welcome to Command Center", "success");
+        onLoginSuccess(res.user);
+      }
     } catch (err) {
-      addToast("Failed to save SMS credentials: " + err.message, "error");
+      const detail = err?.message || "Invalid administrative credentials. Access denied.";
+      setErrorMsg(detail.replace("API error: 401 ", ""));
+      addToast("Access Denied: Invalid Credentials", "error");
     } finally {
-      setSavingSmsConfig(false);
+      setAdminLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 py-12 relative overflow-hidden selection:bg-brand-500 selection:text-white">
-      {/* Dynamic Background Glows */}
+    <div className="min-h-screen bg-slate-950 flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden selection:bg-brand-500 selection:text-white">
+      {/* Background Glows */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-10 right-10 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Main Container */}
-      <div className="w-full max-w-md relative z-10 space-y-5">
-        {/* Invisible Google reCAPTCHA Container for Firebase Phone Auth */}
-        <div id="recaptcha-container"></div>
-        
+      <div className="w-full max-w-md relative z-10 space-y-4">
+
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 shadow-xl shadow-brand-500/25 ring-1 ring-white/20 mb-2">
-            <ShieldAlert className="w-8 h-8 text-white" />
+        <div className="text-center space-y-1.5">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-brand-600 to-cyan-500 shadow-xl shadow-brand-500/25 ring-1 ring-white/20 mb-1">
+            <ShieldAlert className="w-7 h-7 text-white" />
           </div>
-          <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-white">
+          <h1 className="text-2xl font-black tracking-tight text-white">
             SURAKSHA-FLOOD
           </h1>
           <p className="text-xs text-slate-400 font-medium">
-            Urban Flood Management & Decision Support Platform
+            Smart Urban Flood Management & Decision Platform
           </p>
-          
-          <div className="flex items-center justify-center gap-2 flex-wrap pt-1">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-[11px] text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Mode: <strong className="text-emerald-400">{systemMode} TELEMETRY</strong></span>
-            </div>
 
-            {/* Live SMS Gateway Indicator */}
-            <button
-              type="button"
-              onClick={() => setIsSmsModalOpen(true)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[11px] font-medium transition-all ${
-                smsGatewayConfigured
-                  ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300 hover:bg-emerald-900/50"
-                  : "bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700"
-              }`}
-            >
-              <MessageSquare className="w-3 h-3" />
-              <span>
-                SMS: <strong>{activeGatewayName || "Setup Real SMS"}</strong>
-              </span>
-              <Settings className="w-3 h-3 ml-0.5 opacity-70" />
-            </button>
+          <div className="flex items-center justify-center gap-2 pt-0.5">
+            <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-slate-900/90 border border-slate-800 text-[11px] text-slate-300">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>Live Radar & Hydrological Telemetry</span>
+            </div>
           </div>
         </div>
 
         {/* Portal Switcher Tabs */}
-        <div className="grid grid-cols-2 p-1.5 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-bold">
+        <div className="grid grid-cols-2 p-1 rounded-2xl bg-slate-900 border border-slate-800 text-xs font-bold">
           <button
             type="button"
             onClick={() => handleSwitchPortal("citizen")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all ${
+            className={`flex items-center justify-center gap-2 py-2 rounded-xl transition-all ${
               portal === "citizen"
-                ? "bg-brand-600 text-white shadow-lg shadow-brand-600/30"
+                ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
@@ -348,9 +235,9 @@ export const LoginPage = ({ onLoginSuccess }) => {
           <button
             type="button"
             onClick={() => handleSwitchPortal("admin")}
-            className={`flex items-center justify-center gap-2 py-2.5 rounded-xl transition-all ${
+            className={`flex items-center justify-center gap-2 py-2 rounded-xl transition-all ${
               portal === "admin"
-                ? "bg-purple-600 text-white shadow-lg shadow-purple-600/30 ring-1 ring-purple-400/30"
+                ? "bg-purple-600 text-white shadow-md shadow-purple-600/30 ring-1 ring-purple-400/30"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
@@ -360,405 +247,267 @@ export const LoginPage = ({ onLoginSuccess }) => {
         </div>
 
         {/* Auth Card */}
-        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800/90 rounded-3xl p-6 lg:p-8 shadow-2xl space-y-6">
-          
-          {/* Portal Context Banner */}
+        <div className="bg-slate-900/90 backdrop-blur-xl border border-slate-800/90 rounded-3xl p-6 shadow-2xl space-y-5">
+
+          {/* CITIZEN PORTAL */}
           {portal === "citizen" ? (
-            <div className="space-y-1 text-center">
-              <h2 className="text-base font-bold text-white flex items-center justify-center gap-2">
-                <Compass className="w-4 h-4 text-brand-400" />
-                Public & Citizen Access
-              </h2>
-              <p className="text-xs text-slate-400">
-                Log in via Mobile OTP to access live street flood maps, dynamic safe routing, and community hazard reporting.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-1.5 text-center">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold uppercase tracking-wider">
-                <ShieldCheck className="w-3 h-3 text-purple-400" />
-                Restricted Clearance
-              </div>
-              <h2 className="text-base font-bold text-white">
-                Municipal Authority Operations
-              </h2>
-              <p className="text-xs text-slate-400">
-                Authorized for Municipal Disaster Leads only. Opens exclusively for the designated authority mobile number.
-              </p>
-              <div className="mt-2 text-[11px] text-purple-300 bg-purple-950/40 border border-purple-800/40 rounded-xl p-2.5 flex items-center justify-between">
-                <span>Designated Admin: <strong>+91 {adminPhone}</strong></span>
-                <button
-                  type="button"
-                  onClick={handleQuickFillAdmin}
-                  className="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-bold transition-all shadow-sm"
-                >
-                  Fill Number
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Error Message Alert */}
-          {errorMsg && (
-            <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5 animate-fadeIn">
-              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-              <div className="leading-relaxed font-medium">{errorMsg}</div>
-            </div>
-          )}
-
-          {/* Step 1: Mobile Number Input */}
-          {step === "phone" && (
-            <form onSubmit={handleRequestOtp} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-                  <span>Mobile Phone Number</span>
-                  {portal === "citizen" && (
-                    <button
-                      type="button"
-                      onClick={handleQuickFillCitizen}
-                      className="text-[11px] text-brand-400 hover:text-brand-300 transition-colors"
-                    >
-                      Use Demo (+91 9876501234)
-                    </button>
-                  )}
-                </label>
-                <div className="relative">
-                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-bold text-slate-400">
-                    <Smartphone className="w-4 h-4 text-slate-500" />
-                    <span>+91</span>
-                  </div>
-                  <input
-                    type="tel"
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Enter 10-digit mobile number"
-                    className="w-full pl-16 pr-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-sm text-white font-mono tracking-wider placeholder:text-slate-600 focus:border-brand-500 focus:ring-1 focus:ring-brand-500 focus:outline-none transition-all"
-                    required
-                  />
+            <div className="space-y-4">
+              
+              {/* PRIMARY FEATURE: 1-Click Instant Emergency Pass */}
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-brand-950/70 via-slate-900 to-slate-950 border border-brand-500/40 shadow-lg shadow-brand-500/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 text-[10px] font-bold uppercase tracking-wider">
+                    <Zap className="w-3 h-3 text-brand-400" />
+                    Life-Safety Priority
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-emerald-400">
+                    <Shield className="w-3 h-3" />
+                    100% Private
+                  </span>
                 </div>
-              </div>
 
-              <button
-                type="submit"
-                disabled={loading || phone.length < 10}
-                className={`w-full py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg ${
-                  portal === "admin"
-                    ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30 disabled:opacity-50"
-                    : "bg-brand-600 hover:bg-brand-500 text-white shadow-brand-600/30 disabled:opacity-50"
-                }`}
-              >
-                {loading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <span>Send Verification Code (OTP)</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-          )}
-
-          {/* Step 2: OTP Verification Input */}
-          {step === "otp" && (
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div className="p-3 rounded-2xl bg-slate-950/60 border border-slate-800 text-xs flex items-center justify-between text-slate-300">
                 <div>
-                  <span className="text-slate-500 block text-[10px]">Verifying Number</span>
-                  <span className="font-mono font-bold text-white">+91 {phone}</span>
+                  <h3 className="text-sm font-bold text-white flex items-center gap-1.5">
+                    Instant Emergency Evacuation Pass
+                  </h3>
+                  <p className="text-[11px] text-slate-400 leading-relaxed mt-1">
+                    Zero personal data required. Transmits your distress beacon to the Municipal Command Center and opens live safe evacuation routes immediately.
+                  </p>
                 </div>
+
                 <button
                   type="button"
-                  onClick={() => {
-                    setStep("phone");
-                    setOtp("");
-                    setDispatchedOtp(null);
-                    setErrorMsg("");
-                  }}
-                  className="text-[11px] text-brand-400 hover:underline"
+                  onClick={handleEmergencyAccess}
+                  disabled={emergencyLoading}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-brand-600 to-cyan-600 hover:from-brand-500 hover:to-cyan-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-brand-600/30 transition-all hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50"
                 >
-                  Change Number
+                  {emergencyLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Enter Live Evacuation Map Now</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
               </div>
 
-              {/* Delivery Notifications & Incoming SMS Banner */}
-              {dispatchedOtp ? (
-                <div className="p-3.5 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900/95 to-slate-950 border border-brand-500/40 shadow-xl shadow-brand-500/10 text-xs space-y-2.5 animate-fadeIn">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-xl bg-brand-500/20 flex items-center justify-center border border-brand-500/30">
-                        <Smartphone className="w-4 h-4 text-brand-400 animate-pulse" />
-                      </div>
-                      <div>
-                        <div className="text-[11px] font-bold text-white flex items-center gap-1.5">
-                          <span>VM-SURAKSHA</span>
-                          <span className="px-1.5 py-0.5 rounded bg-brand-500/20 text-brand-300 text-[9px] font-mono">TELECOM SMS</span>
-                        </div>
-                        <div className="text-[10px] text-slate-400">Incoming Dispatch • Just now</div>
-                      </div>
-                    </div>
-                    <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                      Delivered
-                    </span>
-                  </div>
+              {/* DIVIDER */}
+              <div className="relative flex items-center justify-center">
+                <div className="border-t border-slate-800 w-full" />
+                <span className="bg-slate-900 px-3 text-[10px] font-semibold text-slate-500 uppercase tracking-wider shrink-0">
+                  Or Standard Citizen Access
+                </span>
+                <div className="border-t border-slate-800 w-full" />
+              </div>
 
-                  <div className="p-2.5 rounded-xl bg-slate-950/80 border border-slate-800 font-mono text-xs text-slate-300 flex items-center justify-between">
-                    <div>
-                      <span className="text-slate-500 text-[10px] block">Dispatched OTP Code:</span>
-                      <span className="text-base font-black tracking-widest text-brand-300">{dispatchedOtp}</span>
-                    </div>
-                    <span className="text-[10px] text-slate-500">Expires in 10 mins</span>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-0.5 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOtp(dispatchedOtp);
-                        addToast("OTP auto-filled!", "success");
-                      }}
-                      className="flex-1 py-1.5 px-3 rounded-xl bg-brand-600/25 hover:bg-brand-600/40 text-brand-300 border border-brand-500/40 font-semibold text-[11px] transition-all flex items-center justify-center gap-1.5"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      <span>Auto-Fill Code</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (navigator?.clipboard?.writeText) {
-                          navigator.clipboard.writeText(dispatchedOtp);
-                        }
-                        setCopied(true);
-                        addToast("OTP copied to clipboard!", "info");
-                        setTimeout(() => setCopied(false), 2000);
-                      }}
-                      className="py-1.5 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-[11px] transition-all flex items-center justify-center gap-1 border border-slate-700/60"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>{copied ? "Copied" : "Copy"}</span>
-                    </button>
-                  </div>
-                </div>
-              ) : realSmsSent ? (
-                <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs space-y-1.5 animate-fadeIn">
-                  <div className="flex items-center gap-2 font-bold text-emerald-400">
-                    <CheckCircle2 className="w-4 h-4 shrink-0" />
-                    <span>SMS OTP DISPATCHED</span>
-                  </div>
-                  <p className="text-[11px] leading-relaxed text-emerald-200/90">
-                    A 6-digit verification code has been sent via SMS to <strong>+91 {phone}</strong> ({smsProvider}). Please check your phone's SMS messages and enter the code below.
-                  </p>
-                </div>
-              ) : (
-                <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 text-xs space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-                      <Smartphone className="w-3.5 h-3.5 text-brand-400" />
-                      <span>Verification Code Dispatched</span>
-                    </span>
-                  </div>
-                  <p className="text-[11px] text-slate-400 leading-relaxed">
-                    Enter the 6-digit verification code sent for <strong>+91 {phone}</strong>.
-                  </p>
-                  <div className="text-[10px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-800/80">
-                    <span>Awaiting SMS verification code</span>
-                    <span className="text-slate-500">Valid for 10 mins</span>
-                  </div>
+              {/* Error Message Alert */}
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2 animate-fadeIn">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed font-medium">{errorMsg}</div>
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-slate-300">
-                  Enter 6-Digit Verification Code
-                </label>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              {/* Phone Verification Step */}
+              {step === "phone" ? (
+                <form onSubmit={handleRequestOtp} className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-300">
+                      Mobile Number (Optional Link)
+                    </label>
+                    <div className="relative">
+                      <div className="absolute left-3.5 top-1/2 -translate-y-1/2 flex items-center gap-1 text-xs font-bold text-slate-400">
+                        <Smartphone className="w-4 h-4 text-slate-500" />
+                        <span>+91</span>
+                      </div>
+                      <input
+                        type="tel"
+                        maxLength={10}
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+                        placeholder="Enter 10-digit number"
+                        className="w-full pl-16 pr-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white font-mono tracking-wider placeholder:text-slate-600 focus:border-brand-500 focus:outline-none transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={citizenLoading || phone.length < 10}
+                    className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold text-xs flex items-center justify-center gap-2 transition-all disabled:opacity-40"
+                  >
+                    {citizenLoading ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <span>Get Verification Code</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                /* Step 2: OTP Verification */
+                <form onSubmit={handleVerifyOtp} className="space-y-3">
+                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs flex items-center justify-between text-slate-300">
+                    <span className="font-mono font-bold text-white">+91 {phone}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStep("phone");
+                        setOtp("");
+                        setDispatchedOtp(null);
+                        setErrorMsg("");
+                      }}
+                      className="text-[11px] text-brand-400 hover:underline"
+                    >
+                      Change
+                    </button>
+                  </div>
+
+                  {dispatchedOtp && (
+                    <div className="p-3 rounded-xl bg-slate-950/80 border border-brand-500/40 text-xs flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] text-slate-500 block">Verification Code:</span>
+                        <span className="text-base font-black tracking-widest text-brand-300 font-mono">
+                          {dispatchedOtp}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setOtp(dispatchedOtp);
+                          addToast("Code auto-filled!", "success");
+                        }}
+                        className="py-1 px-2.5 rounded-lg bg-brand-600/30 hover:bg-brand-600/50 text-brand-300 text-[11px] font-semibold flex items-center gap-1 border border-brand-500/40"
+                      >
+                        <Sparkles className="w-3 h-3" />
+                        <span>Auto-Fill</span>
+                      </button>
+                    </div>
+                  )}
+
                   <input
                     type="text"
                     maxLength={6}
                     value={otp}
                     onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                    placeholder="Enter received 6-digit code"
-                    className="w-full pl-10 pr-4 py-3 rounded-2xl bg-slate-950/80 border border-slate-800 text-sm font-mono tracking-widest text-center text-white placeholder:text-slate-600 focus:border-brand-500 focus:outline-none transition-all"
+                    placeholder="Enter 6-digit code"
+                    className="w-full px-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm font-mono tracking-widest text-center text-white placeholder:text-slate-600 focus:border-brand-500 focus:outline-none transition-all"
                     autoFocus
                     required
                   />
+
+                  <button
+                    type="submit"
+                    disabled={citizenLoading || otp.length < 4}
+                    className="w-full py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50"
+                  >
+                    {citizenLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Verify & Continue"}
+                  </button>
+                </form>
+              )}
+
+            </div>
+          ) : (
+            /* ADMIN / AUTHORITY PORTAL (CONFIDENTIAL PASSWORD AUTHENTICATION - NO OTP) */
+            <div className="space-y-4">
+              <div className="space-y-1.5 text-center">
+                <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold uppercase tracking-wider">
+                  <ShieldCheck className="w-3 h-3 text-purple-400" />
+                  Restricted Access
                 </div>
+                <h2 className="text-base font-bold text-white">
+                  Command Center Authentication
+                </h2>
+                <p className="text-[11px] text-slate-400">
+                  Authorized personnel only. Enter your administrator ID and secure password to access disaster dispatch operations.
+                </p>
               </div>
 
-              <button
-                type="submit"
-                disabled={loading || otp.length < 4}
-                className={`w-full py-3 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg ${
-                  portal === "admin"
-                    ? "bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/30 disabled:opacity-50"
-                    : "bg-brand-600 hover:bg-brand-500 text-white shadow-brand-600/30 disabled:opacity-50"
-                }`}
-              >
-                {loading ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <span>Verify & Enter {portal === "admin" ? "Authority Command" : "Portal"}</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
+              {/* Error Message Alert */}
+              {errorMsg && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2 animate-fadeIn">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <div className="leading-relaxed font-medium">{errorMsg}</div>
+                </div>
+              )}
 
-              <div className="text-center pt-1">
+              {/* Secure Password-Based Admin Form */}
+              <form onSubmit={handleAdminLogin} className="space-y-3.5">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Administrator ID / Email
+                  </label>
+                  <div className="relative">
+                    <Key className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      value={adminUsername}
+                      onChange={(e) => setAdminUsername(e.target.value)}
+                      placeholder="Enter administrator ID"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white placeholder:text-slate-600 focus:border-purple-500 focus:outline-none transition-all"
+                      required
+                      autoComplete="username"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-slate-300">
+                    Security Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={adminPassword}
+                      onChange={(e) => setAdminPassword(e.target.value)}
+                      placeholder="Enter password"
+                      className="w-full pl-10 pr-10 py-2.5 rounded-xl bg-slate-950/80 border border-slate-800 text-sm text-white placeholder:text-slate-600 focus:border-purple-500 focus:outline-none transition-all"
+                      required
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors p-1"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
                 <button
-                  type="button"
-                  onClick={handleRequestOtp}
-                  disabled={loading}
-                  className="text-xs text-slate-400 hover:text-white transition-colors"
+                  type="submit"
+                  disabled={adminLoading || !adminUsername.trim() || !adminPassword.trim()}
+                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-purple-600/30 disabled:opacity-50 mt-2"
                 >
-                  Didn't receive code? <span className="text-brand-400 underline">Resend Code</span>
+                  {adminLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <span>Authenticate & Open Command Center</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
-              </div>
-            </form>
+              </form>
+
+            </div>
           )}
 
         </div>
 
-        {/* Live GIS & Real-World Telemetry Notice */}
-        <div className="text-center text-[11px] text-slate-500 space-y-1">
-          <p>Real-World Radar Telemetry • Open-Meteo & OpenStreetMap Feeds</p>
-          <p className="text-[10px] text-slate-600">
-            Emergency helpline: 112 / 1077 • Municipal Disaster Management Cell
-          </p>
+        {/* Footer info */}
+        <div className="text-center text-[10px] text-slate-500 space-y-0.5">
+          <p>SURAKSHA-FLOOD • Zero-Knowledge Emergency Disaster Network</p>
+          <p className="text-slate-600">Disaster Emergency Helpline: 112 / 1077</p>
         </div>
 
       </div>
-
-      {/* SMS Gateway Settings Modal */}
-      {isSmsModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-fadeIn">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 w-full max-w-md shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center">
-                  <MessageSquare className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white">Real SMS Gateway Setup</h3>
-                  <p className="text-[11px] text-slate-400">Deliver genuine OTP SMS to any Indian mobile number</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsSmsModalOpen(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 text-xs space-y-1">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-400">Active Gateway:</span>
-                <span className="font-bold text-emerald-400">
-                  {activeGatewayName || "None (Simulation Mode)"}
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-500 pt-1">
-                Indian telecom rules (TRAI) require registered gateways to deliver SMS. For zero-setup testing, Fast2SMS Quick OTP route works instantly without DLT paperwork.
-              </p>
-            </div>
-
-            <form onSubmit={handleSaveSmsConfig} className="space-y-4 text-xs">
-              {/* Option 1: Fast2SMS */}
-              <div className="space-y-2 p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-200">Fast2SMS (Recommended for India)</span>
-                  <a
-                    href="https://www.fast2sms.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] text-brand-400 hover:underline inline-flex items-center gap-0.5"
-                  >
-                    <span>fast2sms.com</span>
-                    <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                </div>
-                <p className="text-[10px] text-slate-400">
-                  Free signup credits provided. Enter your <strong>Dev API Authorization Key</strong>:
-                </p>
-                <input
-                  type="text"
-                  value={fast2smsKey}
-                  onChange={(e) => setFast2smsKey(e.target.value)}
-                  placeholder="Paste Fast2SMS API Key"
-                  className="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:border-brand-500 focus:outline-none"
-                />
-              </div>
-
-              {/* Option 2: Twilio */}
-              <div className="space-y-2 p-3 rounded-2xl bg-slate-950/60 border border-slate-800">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-slate-200">Twilio (International)</span>
-                  <a
-                    href="https://www.twilio.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="text-[10px] text-brand-400 hover:underline inline-flex items-center gap-0.5"
-                  >
-                    <span>twilio.com</span>
-                    <ExternalLink className="w-2.5 h-2.5" />
-                  </a>
-                </div>
-                <div className="space-y-1.5">
-                  <input
-                    type="text"
-                    value={twilioSid}
-                    onChange={(e) => setTwilioSid(e.target.value)}
-                    placeholder="Twilio Account SID"
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:border-brand-500 focus:outline-none"
-                  />
-                  <input
-                    type="password"
-                    value={twilioToken}
-                    onChange={(e) => setTwilioToken(e.target.value)}
-                    placeholder="Twilio Auth Token"
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:border-brand-500 focus:outline-none"
-                  />
-                  <input
-                    type="text"
-                    value={twilioFrom}
-                    onChange={(e) => setTwilioFrom(e.target.value)}
-                    placeholder="Twilio Phone Number (e.g. +1234567890)"
-                    className="w-full px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs focus:border-brand-500 focus:outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setIsSmsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-slate-400 hover:text-white transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={savingSmsConfig}
-                  className="px-5 py-2 rounded-xl bg-brand-600 hover:bg-brand-500 text-white font-bold transition-all shadow-lg shadow-brand-600/30 flex items-center gap-1.5"
-                >
-                  {savingSmsConfig ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  )}
-                  <span>Save & Enable</span>
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 };

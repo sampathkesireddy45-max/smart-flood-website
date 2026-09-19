@@ -1,13 +1,15 @@
+import os
+import time
+import json
 import random
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from ..database import get_db
-from ..models import FloodReport, Incident, Task, AuditLog, Ward
+from ..models import FloodReport, Incident, Task, AuditLog, Ward, Road
 from ..schemas import FloodReportCreate, FloodReportVerify
 from ..routing_engine import haversine_distance_m
-from ..regional_data import is_regional, get_regional_reports
 
 router = APIRouter(prefix="/reports", tags=["Citizen Reporting & Verification"])
 
@@ -19,14 +21,6 @@ def list_reports(
     lng: Optional[float] = None,
     db: Session = Depends(get_db)
 ):
-    if is_regional(lat, lng):
-        regional_rpts = get_regional_reports(lat, lng)
-        if verification_status and verification_status.upper() != "ALL":
-            regional_rpts = [r for r in regional_rpts if r["verification_status"] == verification_status.upper()]
-        if report_type and report_type.upper() != "ALL":
-            regional_rpts = [r for r in regional_rpts if r["report_type"] == report_type.upper()]
-        return regional_rpts
-
     query = db.query(FloodReport)
     if verification_status and verification_status.upper() != "ALL":
         query = query.filter(FloodReport.verification_status == verification_status.upper())
@@ -57,13 +51,49 @@ def list_reports(
         })
     return results
 
+@router.post("/upload-photo")
+async def upload_hazard_photo(file: UploadFile = File(...)):
+    """
+    Accepts real photographic evidence from the public of the flooded area.
+    Saves the image directly to uploads/ directory and returns accessible URL.
+    """
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files (JPEG, PNG, WEBP) are accepted.")
+
+    upload_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads"))
+    os.makedirs(upload_dir, exist_ok=True)
+    ext = os.path.splitext(file.filename or "")[1].lower() or ".jpg"
+    if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
+        ext = ".jpg"
+    filename = f"hazard_{int(time.time())}_{random.randint(1000, 9999)}{ext}"
+    dest_path = os.path.join(upload_dir, filename)
+
+    content = await file.read()
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="Uploaded photo is empty.")
+
+    with open(dest_path, "wb") as f:
+        f.write(content)
+
+    return {
+        "photo_url": f"/uploads/{filename}",
+        "full_url": f"http://localhost:8000/uploads/{filename}",
+        "filename": filename,
+        "size_bytes": len(content)
+    }
+
 @router.post("")
 def create_citizen_report(payload: FloodReportCreate, db: Session = Depends(get_db)):
-    # Validate coordinates
-    if not (12.0 <= payload.latitude <= 14.5 and 79.5 <= payload.longitude <= 81.0):
-        # Permissive for demo coordinates, but ensure floats exist
-        if payload.latitude == 0 or payload.longitude == 0:
-            raise HTTPException(status_code=400, detail="Invalid GPS location coordinates.")
+    # Validate real coordinates
+    if payload.latitude == 0 or payload.longitude == 0:
+        raise HTTPException(status_code=400, detail="Invalid GPS location coordinates.")
+
+    # Enforce mandatory real photo evidence
+    if not payload.photo_url or not payload.photo_url.strip():
+        raise HTTPException(
+            status_code=400,
+            detail="Ground photographic evidence is mandatory. Please capture or upload a real photo of the flooded area."
+        )
 
     # Match nearest ward
     wards = db.query(Ward).all()
@@ -75,7 +105,7 @@ def create_citizen_report(payload: FloodReportCreate, db: Session = Depends(get_
             min_dist = d
             nearest_ward = w
 
-    # Duplicate detection (Section 15): within 300 meters and 4 hours
+    # Duplicate detection: within 300 meters and 4 hours
     cutoff = datetime.utcnow() - timedelta(hours=4)
     recent_nearby = db.query(FloodReport).filter(
         FloodReport.reported_at >= cutoff,
@@ -88,36 +118,81 @@ def create_citizen_report(payload: FloodReportCreate, db: Session = Depends(get_
             is_duplicate = True
             break
 
-    code_num = random.randint(100, 999)
-    report_code = f"RPT-2026-{code_num}"
+    code_num = random.randint(1000, 9999)
+    report_code = f"RPT-{code_num}"
+
+    is_severe = "Waist" in str(payload.reported_water_level) or "Submerged" in str(payload.reported_water_level) or payload.report_type == "FLOODING"
 
     new_report = FloodReport(
         report_code=report_code,
-        reporter_name=payload.reporter_name or "Concerned Resident",
-        reporter_phone=payload.reporter_phone or "+91 98400 00000",
+        reporter_name=payload.reporter_name or "Concerned Citizen",
+        reporter_phone=payload.reporter_phone or "Citizen App",
         report_type=payload.report_type.upper(),
         description=payload.description,
         latitude=payload.latitude,
         longitude=payload.longitude,
         ward_id=nearest_ward.id if nearest_ward else 1,
         reported_water_level=payload.reported_water_level or "Ankle deep (15cm)",
-        photo_url=payload.photo_url or "/uploads/demo_report.jpg",
-        verification_status="PENDING",
-        severity="HIGH" if "Waist" in str(payload.reported_water_level) or "Submerged" in str(payload.reported_water_level) else "MEDIUM",
+        photo_url=payload.photo_url.strip(),
+        verification_status="VERIFIED",
+        severity="CRITICAL" if "Submerged" in str(payload.reported_water_level) else ("HIGH" if is_severe else "MEDIUM"),
         is_grouped_duplicate=is_duplicate,
-        reported_at=datetime.utcnow()
+        reported_at=datetime.utcnow(),
+        verified_by="Citizen Ground Evidence",
+        verification_notes="Reported with real photographic evidence."
     )
     db.add(new_report)
     db.commit()
     db.refresh(new_report)
 
+    # Dynamically update the nearest road status to FLOODED based on this genuine citizen report!
+    nearest_road = None
+    min_road_dist = float("inf")
+    for rd in db.query(Road).all():
+        try:
+            coords = json.loads(rd.coordinates_json)
+            for pt in coords:
+                d = haversine_distance_m(payload.latitude, payload.longitude, pt[0], pt[1])
+                if d < min_road_dist:
+                    min_road_dist = d
+                    nearest_road = rd
+        except Exception:
+            continue
+
+    if nearest_road and min_road_dist <= 350.0:
+        nearest_road.status = "FLOODED" if is_severe else "AT_RISK"
+        nearest_road.flood_risk = 85.0 if is_severe else 60.0
+        nearest_road.last_verified_at = datetime.utcnow()
+        db.commit()
+
+    # Automatically create an active Incident for Municipal Authority Command Center
+    inc_code = f"INC-{report_code}"
+    new_incident = Incident(
+        incident_code=inc_code,
+        incident_type="ROAD_INUNDATION" if payload.report_type == "FLOODING" else "COMMUNITY_FLOOD",
+        title=f"Citizen Verified Hazard: {payload.description[:50]}",
+        description=f"{payload.description} (Water level: {payload.reported_water_level}). Ground photo verified.",
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+        ward_id=nearest_ward.id if nearest_ward else 1,
+        priority="CRITICAL" if is_severe else "HIGH",
+        system_recommended_priority="HIGH",
+        status="ASSIGNED",
+        source_report_id=new_report.id,
+        created_by=new_report.reporter_name
+    )
+    db.add(new_incident)
+    db.commit()
+    db.refresh(new_incident)
+    new_report.linked_incident_id = new_incident.id
+
     # Log to audit
     audit = AuditLog(
         user=new_report.reporter_name,
-        action="CITIZEN_REPORT_SUBMITTED",
+        action="CITIZEN_PHOTO_REPORT_SUBMITTED",
         record=f"{new_report.report_code} ({new_report.report_type})",
         old_value=None,
-        new_value="PENDING"
+        new_value="VERIFIED"
     )
     db.add(audit)
     db.commit()
@@ -125,11 +200,12 @@ def create_citizen_report(payload: FloodReportCreate, db: Session = Depends(get_
     return {
         "report_id": new_report.id,
         "report_code": new_report.report_code,
-        "status": "PENDING",
+        "status": "VERIFIED",
+        "photo_url": new_report.photo_url,
         "is_grouped_duplicate": is_duplicate,
         "duplicate_notice": "Multiple reports received in this area (grouped for verification)" if is_duplicate else None,
         "submission_timestamp": new_report.reported_at.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        "message": f"Report {new_report.report_code} logged successfully in municipal registry."
+        "message": f"Report {new_report.report_code} with photo evidence logged in municipal registry."
     }
 
 @router.patch("/{report_id}/verify")

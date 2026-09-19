@@ -70,6 +70,12 @@ export const setupRecaptcha = (containerId = "recaptcha-container") => {
     try {
       window.recaptchaVerifier.clear();
     } catch (e) {}
+    window.recaptchaVerifier = null;
+  }
+
+  const containerElem = document.getElementById(containerId);
+  if (containerElem) {
+    containerElem.innerHTML = "";
   }
 
   window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
@@ -90,6 +96,11 @@ export const dispatchFirebaseOtp = async (clean10DigitPhone, containerId = "reca
   if (!auth) throw new Error("Firebase is not initialized.");
 
   const verifier = setupRecaptcha(containerId);
+  try {
+    await verifier.render();
+  } catch (renderErr) {
+    console.warn("reCAPTCHA render notice:", renderErr);
+  }
   const formattedPhone = `+91${clean10DigitPhone}`;
   
   const confirmationResult = await signInWithPhoneNumber(auth, formattedPhone, verifier);

@@ -7,6 +7,14 @@ class UserLogin(BaseModel):
     email: str
     password: str
 
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+class EmergencyAccessRequest(BaseModel):
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
 class OtpRequest(BaseModel):
     phone: str
     portal: str = "citizen"  # "citizen" or "admin"
@@ -27,7 +35,7 @@ class OtpResponse(BaseModel):
     portal: str
 
 class AuthConfigResponse(BaseModel):
-    admin_phone: str
+    admin_phone: Optional[str] = None
     mode: str
     sms_configured: bool = False
     active_sms_provider: Optional[str] = None
