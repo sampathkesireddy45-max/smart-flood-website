@@ -123,8 +123,9 @@ export const LoginPage = ({ onLoginSuccess }) => {
       }
     } catch (err) {
       const detail = err?.message || "Failed to send code.";
-      setErrorMsg(detail.replace("API error: 403 ", "").replace("API error: 400 ", ""));
-      addToast("Failed to request code", "error");
+      const cleanDetail = detail.replace("API error: 403 ", "").replace("API error: 400 ", "");
+      setErrorMsg(cleanDetail);
+      addToast(cleanDetail || "Failed to request code", "error");
     } finally {
       setCitizenLoading(false);
     }

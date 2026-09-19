@@ -1,4 +1,26 @@
-export const BACKEND_URL = (import.meta.env.VITE_BACKEND_URL || "http://localhost:8000").replace(/\/$/, "");
+// Dynamically resolve Backend URL
+// 1. If explicitly set via VITE_BACKEND_URL (build-time or runtime), use it.
+// 2. In browser environments:
+//    - If running locally on a Vite development server (e.g. port 5173 or 3000), target local FastAPI on port 8000.
+//    - For all deployed sites (Render, cloud domains, reverse proxies, production containers),
+//      use the current window origin so requests route securely (HTTPS) to the same host without mixed-content or localhost errors.
+export const BACKEND_URL = (() => {
+  const envUrl = import.meta.env.VITE_BACKEND_URL;
+  if (envUrl && envUrl.trim() !== "") {
+    return envUrl.trim().replace(/\/$/, "");
+  }
+  if (typeof window !== "undefined") {
+    const { hostname, port, protocol, origin } = window.location;
+    // Local Vite dev server on port 5173 or 3000 -> direct to local FastAPI on port 8000
+    if (port === "5173" || port === "3000") {
+      return `${protocol}//${hostname || "localhost"}:8000`;
+    }
+    // Deployed production environment (Render, Vercel, Tunnels, mobile web, or FastAPI-served SPA)
+    return origin.replace(/\/$/, "");
+  }
+  return "http://localhost:8000";
+})();
+
 export const API_BASE = `${BACKEND_URL}/api`;
 
 export const getPhotoUrl = (url) => {
