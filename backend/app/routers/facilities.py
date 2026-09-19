@@ -36,7 +36,7 @@ def fetch_live_osm_facilities(lat: float, lng: float, facility_type: Optional[st
 
     delta = 0.12
     url = f"https://nominatim.openstreetmap.org/search?q={query_term}&format=json&limit=8&viewbox={lng-delta},{lat+delta},{lng+delta},{lat-delta}&bounded=1"
-    req = urllib.request.Request(url, headers={"User-Agent": "SurakshaFloodSystem/2.0"})
+    req = urllib.request.Request(url, headers={"User-Agent": "UrbanFloodNowcastingSystem/2.0"})
     results = []
     try:
         with urllib.request.urlopen(req, timeout=3.5) as resp:

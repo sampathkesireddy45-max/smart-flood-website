@@ -62,7 +62,7 @@ export const Navbar = ({
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-base lg:text-lg font-bold tracking-tight text-white">
-                    SURAKSHA-FLOOD
+                    Urban Flood Nowcasting System
                   </h1>
                   <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full border ${
                     isAuthority
@@ -77,7 +77,7 @@ export const Navbar = ({
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 hidden sm:block">
-                  Real-Time Urban Flood Monitoring & Decision Support System
+                  Real-Time Urban Flood Nowcasting & Decision Support Platform
                 </p>
               </div>
             </div>

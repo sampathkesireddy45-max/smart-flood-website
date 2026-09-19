@@ -1,5 +1,5 @@
 # ====================================================================
-# SURAKSHA-FLOOD Production Multi-Stage Container Dockerfile
+# Urban Flood Nowcasting System - Production Multi-Stage Container Dockerfile
 # Stage 1: Build React 19 Frontend with Vite
 # Stage 2: FastAPI Uvicorn Server serving both API & Built SPA
 # ====================================================================

@@ -25,7 +25,7 @@ def fetch_live_osm_roads(lat: float, lng: float, db: Optional[Session] = None) -
     delta = 0.05
     q = f'[out:json][timeout:4];way["highway"~"primary|secondary|trunk"]({lat-delta},{lng-delta},{lat+delta},{lng+delta});out geom 10;'
     url = 'https://overpass-api.de/api/interpreter?data=' + urllib.parse.quote(q)
-    req = urllib.request.Request(url, headers={'User-Agent': 'SurakshaFloodSystem/2.0'})
+    req = urllib.request.Request(url, headers={'User-Agent': 'UrbanFloodNowcastingSystem/2.0'})
     results = []
 
     # Get active citizen reports with photo evidence to dynamically assess road passability

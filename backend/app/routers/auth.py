@@ -103,9 +103,9 @@ def request_otp(payload: OtpRequest):
 
     # Clean server terminal logging (OTP is NEVER sent to the client browser)
     print("\n" + "=" * 64, flush=True)
-    print(f"[SURAKSHA AUTH] OTP DISPATCH FOR: +91 {clean_phone} ({payload.portal.upper()} PORTAL)", flush=True)
-    print(f"[SURAKSHA AUTH] 6-DIGIT VERIFICATION CODE: {generated_otp}", flush=True)
-    print(f"[SURAKSHA AUTH] REAL SMS DELIVERY STATUS: {'DELIVERED via ' + provider_name if real_sent else 'NO GATEWAY (Add Fast2SMS key in settings for real phone SMS)'}", flush=True)
+    print(f"[NOWCASTING AUTH] OTP DISPATCH FOR: +91 {clean_phone} ({payload.portal.upper()} PORTAL)", flush=True)
+    print(f"[NOWCASTING AUTH] 6-DIGIT VERIFICATION CODE: {generated_otp}", flush=True)
+    print(f"[NOWCASTING AUTH] REAL SMS DELIVERY STATUS: {'DELIVERED via ' + provider_name if real_sent else 'NO GATEWAY (Add Fast2SMS key in settings for real phone SMS)'}", flush=True)
     print("=" * 64 + "\n", flush=True)
 
     msg = (
@@ -196,7 +196,7 @@ def verify_otp(payload: OtpVerifyRequest, db: Session = Depends(get_db)):
         db.refresh(user)
 
     return {
-        "access_token": f"suraksha-jwt-{user.id}-{user.role}-{int(time.time())}",
+        "access_token": f"nowcasting-jwt-{user.id}-{user.role}-{int(time.time())}",
         "token_type": "bearer",
         "user": user,
     }
@@ -240,7 +240,7 @@ def emergency_access(payload: Optional[EmergencyAccessRequest] = None, db: Sessi
                 reported_water_level="Active Evacuation",
                 verification_status="VERIFIED",
                 severity="CRITICAL",
-                verified_by="SURAKSHA Autonomous System",
+                verified_by="Urban Flood Nowcasting Autonomous System",
                 verification_notes="Autonomous emergency pass GPS location lock."
             )
             db.add(report)
@@ -263,13 +263,13 @@ def emergency_access(payload: Optional[EmergencyAccessRequest] = None, db: Sessi
             )
             db.add(inc)
             db.commit()
-            print(f"\n[SURAKSHA BEACON] Citizen #{anon_id} Evacuation Pass activated at ({lat}, {lng})! Transmitted to Admin Command Center.\n", flush=True)
+            print(f"\n[NOWCASTING BEACON] Citizen #{anon_id} Evacuation Pass activated at ({lat}, {lng})! Transmitted to Admin Command Center.\n", flush=True)
         except Exception as e:
-            print(f"[SURAKSHA BEACON] Error logging beacon: {e}", flush=True)
+            print(f"[NOWCASTING BEACON] Error logging beacon: {e}", flush=True)
             db.rollback()
 
     return {
-        "access_token": f"suraksha-emergency-jwt-{user.id}-{int(time.time())}",
+        "access_token": f"nowcasting-emergency-jwt-{user.id}-{int(time.time())}",
         "token_type": "bearer",
         "user": user,
     }
@@ -313,7 +313,7 @@ def admin_login(payload: AdminLoginRequest, db: Session = Depends(get_db)):
         db.refresh(user)
 
     return {
-        "access_token": f"suraksha-admin-jwt-{user.id}-{int(time.time())}",
+        "access_token": f"nowcasting-admin-jwt-{user.id}-{int(time.time())}",
         "token_type": "bearer",
         "user": user,
     }

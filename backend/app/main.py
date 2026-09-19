@@ -24,7 +24,7 @@ finally:
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="Operational Flood Monitoring, Explainable Risk Assessment & Decision Support Platform"
+    description="Operational Flood Nowcasting, Explainable Risk Assessment & Decision Support Platform"
 )
 
 # CORS configuration

@@ -5,7 +5,7 @@ _BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 _DEFAULT_DB = os.path.join(_BASE_DIR, "flood_system.db").replace("\\", "/")
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Smart Urban Flood Management & Decision Support System"
+    PROJECT_NAME: str = "Urban Flood Nowcasting System"
     VERSION: str = "1.0.0"
     API_PREFIX: str = "/api"
     DATA_MODE: str = os.getenv("DATA_MODE", "live")  # "live" or "mock"

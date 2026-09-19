@@ -203,10 +203,10 @@ export const LoginPage = ({ onLoginSuccess }) => {
             <ShieldAlert className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white">
-            SURAKSHA-FLOOD
+            Urban Flood Nowcasting System
           </h1>
           <p className="text-xs text-slate-400 font-medium">
-            Smart Urban Flood Management & Decision Platform
+            Smart Urban Flood Nowcasting & Decision Platform
           </p>
 
           <div className="flex items-center justify-center gap-2 pt-0.5">
@@ -503,7 +503,7 @@ export const LoginPage = ({ onLoginSuccess }) => {
 
         {/* Footer info */}
         <div className="text-center text-[10px] text-slate-500 space-y-0.5">
-          <p>SURAKSHA-FLOOD • Zero-Knowledge Emergency Disaster Network</p>
+          <p>Urban Flood Nowcasting System • Zero-Knowledge Emergency Disaster Network</p>
           <p className="text-slate-600">Disaster Emergency Helpline: 112 / 1077</p>
         </div>
 

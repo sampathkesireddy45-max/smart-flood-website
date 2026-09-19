@@ -1,11 +1,12 @@
-# SURAKSHA-FLOOD (SIH Project) Progress Checkpoint & State
+# Urban Flood Nowcasting System (SIH Project) Progress Checkpoint & State
 
 > **Resume Trigger Phrases**: 
 > * `"continue my sih project"`
 > * `"continue my sih-2 project"`
 > * `"continue sih"`
-> * `agy --conversation=e0958d5f-541d-45b3-849e-e860ab3675a2`
+> * `agy --conversation=aa7ac748-3d5c-4ff2-b5fa-5a52bcf69f5b`
 > * `agy --conversation=377466e7-8305-45b2-92f7-e318b7471f58`
+> * `agy --conversation=e0958d5f-541d-45b3-849e-e860ab3675a2`
 > * `agy --conversation=fc29755d-b611-4f4c-9c1d-e88e685bc986`
 > * `agy --conversation=1c0f84c7-48d5-465b-b949-c6ea1773ed24`
 > * `agy --conversation=e6344a04-d1d3-449d-89c2-d56e11481db6`
@@ -16,7 +17,7 @@
 
 ## 1. Project Directory & Core Information
 * **Root Directory**: `C:\Users\sampa\smart-flood-website`
-* **Project Name**: SURAKSHA-FLOOD (Smart Urban Flood Management & Decision Support Platform)
+* **Project Name**: Urban Flood Nowcasting System (Smart Flood Management & Decision Support Platform)
 * **Stack**:
   * **Backend**: FastAPI (`http://localhost:8000`, API docs: `/docs`), SQLAlchemy, SQLite (`flood_system.db`), Open-Meteo Weather API, OSRM Public Routing API, OpenStreetMap Overpass & Nominatim Geocoders.
   * **Frontend**: React 19, Vite (`http://localhost:5173`), Tailwind CSS, Leaflet & React-Leaflet, Lucide React, Canvas Confetti.

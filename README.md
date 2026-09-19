@@ -1,4 +1,4 @@
-# SURAKSHA-FLOOD: Smart Urban Flood Management & Decision Support System
+# Urban Flood Nowcasting System: Smart Flood Management & Decision Support Platform
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sampathkesireddy45-max/smart-flood-website)
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/sampathkesireddy45-max/smart-flood-website&root-directory=frontend)
@@ -7,9 +7,9 @@
 > 
 > **Alternative Live Web Link**: [https://suraksha-flood-sih.loca.lt](https://suraksha-flood-sih.loca.lt) (Password: `43.228.95.2`)
 > 
-> **Production-Quality Municipal Prototype** built strictly adhering to the *Smart Urban Flood Management & Decision Support System Software Implementation Specification*.
+> **Production-Quality Municipal Prototype** built strictly adhering to the *Smart Urban Flood Nowcasting & Decision Support System Software Implementation Specification*.
 
-SURAKSHA-FLOOD is an end-to-end operational platform designed for urban flood monitoring, explainable multi-factor risk assessment, citizen ground reporting, road-condition lifecycle management, critical-facility accessibility evaluation, emergency task assignment, and flood-aware lower-risk route navigation.
+Urban Flood Nowcasting System is an end-to-end operational platform designed for urban flood nowcasting, explainable multi-factor risk assessment, citizen ground reporting, road-condition lifecycle management, critical-facility accessibility evaluation, emergency task assignment, and flood-aware lower-risk route navigation.
 
 ---
 
