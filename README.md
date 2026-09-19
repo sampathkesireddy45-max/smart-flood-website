@@ -3,7 +3,9 @@
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/sampathkesireddy45-max/smart-flood-website)
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/sampathkesireddy45-max/smart-flood-website&root-directory=frontend)
 
-> **Live Web Demo**: [https://5c47b4cb8ee897de-43-228-95-2.serveousercontent.com](https://5c47b4cb8ee897de-43-228-95-2.serveousercontent.com)
+> **Live Web Demo**: [https://fb31867be785c800-43-228-95-2.serveousercontent.com](https://fb31867be785c800-43-228-95-2.serveousercontent.com)
+> 
+> **Alternative Live Web Link**: [https://suraksha-flood-sih.loca.lt](https://suraksha-flood-sih.loca.lt) (Password: `43.228.95.2`)
 > 
 > **Production-Quality Municipal Prototype** built strictly adhering to the *Smart Urban Flood Management & Decision Support System Software Implementation Specification*.
 
